@@ -1,0 +1,6 @@
+github.com/akhenakh/sgp4 v0.0.0-20260314155803-8ee03fc877eb h1:d9tZ7tJrssgs7Va9j8iu9vl7BlK2rmIs5RiOU7WQJrs=
+github.com/akhenakh/sgp4 v0.0.0-20260314155803-8ee03fc877eb/go.mod h1:JfAepWD223Cel6uRpzYdip/xijWZ2FT457YFLWy8Md4=
+github.com/avyayk/celestrak-go v0.0.0-20260202043533-db2581e12587 h1:NT2O6VwdvUJ93Eof/+CYKBk+2olJiavKQoWu7IYR5hg=
+github.com/avyayk/celestrak-go v0.0.0-20260202043533-db2581e12587/go.mod h1:Jl0x4fAutcIfL9x3wvf94eNuv5jVZz52/dUCZzcWghs=
+solace.dev/go/messaging v1.10.0 h1:6fYG0SF4ILXmXA32thnbNRy87w76+CjQhTp16EP3U/Q=
+solace.dev/go/messaging v1.10.0/go.mod h1:QKqAKqxKX5v0G9PEuRpe9wBNbEuj/ncbrkqsNArT7L0=
