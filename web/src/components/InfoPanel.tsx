@@ -1,15 +1,8 @@
 import * as React from 'react';
-import { useState, useEffect } from 'react';
 import solaceLogo from '../assets/solace.svg';
 import githubLogo from '../assets/github-lockup.svg';
 
-
 export function InfoPanel() {
-
-
-
-
-
     const didYouKnowFacts = [
       "Satellites omit their orbital elements using a TLE set. Each line is 69 characters of pure physics.",
       "Molniya Orbits spend 11h of their 12h period over the northern hemisphere for stable communications.",
@@ -19,7 +12,6 @@ export function InfoPanel() {
       "The ISS serves as a microgravity research lab at an altitude of ~420 km."
     ];
       const [randomFact] = React.useState(() => didYouKnowFacts[Math.floor(Math.random() * didYouKnowFacts.length)]);
-
 
   // Exakte Stil-Kopien aus deinem ControlPanel
   const sectionHeaderStyle: React.CSSProperties = {

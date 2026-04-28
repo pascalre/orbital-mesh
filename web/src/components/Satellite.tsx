@@ -13,7 +13,7 @@ interface SatelliteProps extends React.ComponentPropsWithoutRef<'mesh'> {
   name: string;
 }
 
-export function Satellite({ data, name, ...props }: SatelliteProps) {
+export function Satellite({ data, ...props }: SatelliteProps) {
   const meshRef = useRef<THREE.Mesh>(null);
 
   // 1. Umrechnung der Geodätischen Koordinaten (Go-Backend) in Three.js World-Space

@@ -6,8 +6,6 @@ const ORBIT_OPTIONS = ["*", "LEO", "GEO", "SSO", "MEO", "HEO", "Molniya", "PO"];
 const COUNTRY_OPTIONS = ["*"];
 const PROVIDER_OPTIONS = ["*", "STARLINK", "ONEWEB", "GPS", "CENTISPACE", "GLONASS", "IRNSS", "TEN", "STRIX", "PROGRESS", "RASSVET", "SUPERVIEW", "SHIYAN", "LPNTSAT", "XINZHENGCHENG", "TRANSPORTER", "JACK", "OPTISAT", "FEMTO", "ERMIS", "SPOQC", "HAWK", "HADES", "COSMO", "PARUS", "KUIPER", "QIANFAN", "HULIANWANG", "JILIN"];
 
-
-
 interface EventLog {
   id: string;
   timestamp: string;
@@ -17,8 +15,6 @@ interface EventLog {
   latitude?: number;
   longitude?: number;
 }
-
-
 interface Props {
   onFilterChange: (topic: string) => void;
   msgRate: number;      // Neu als Prop

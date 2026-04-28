@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { useRef } from 'react';
-import { useTexture, Sphere } from '@react-three/drei';
+import { Sphere } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 
 interface SunProps {
