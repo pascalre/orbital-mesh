@@ -15,14 +15,14 @@ interface EventLog {
   latitude?: number;
   longitude?: number;
 }
-interface Props {
+interface ControlPanelProps {
   onFilterChange: (topic: string) => void;
   msgRate: number;      // Neu als Prop
   isConnected: boolean; // Neu als Prop
   solaceData: any;
 }
 
-export function ControlPanel({ onFilterChange, msgRate, isConnected, solaceData }: Props) {
+export function ControlPanel({ onFilterChange, msgRate, isConnected, solaceData }: ControlPanelProps) {
   const [events, setEvents] = useState<EventLog[]>([]);
 
   const [time, setTime] = useState(new Date());
@@ -31,7 +31,6 @@ export function ControlPanel({ onFilterChange, msgRate, isConnected, solaceData 
   const [selectedProvider, setSelectedProvider] = React.useState("*");
 
   const getTopicPart = (value: string) => value === "ALL" ? "*" : value;
-
 
   useEffect(() => {
     if (!solaceData) return;
@@ -81,8 +80,6 @@ export function ControlPanel({ onFilterChange, msgRate, isConnected, solaceData 
   React.useEffect(() => {
     onFilterChange(activeTopic);
   }, [activeTopic, onFilterChange]);
-
-
 
   const filterGroupStyle: React.CSSProperties = {
     display: 'flex',
@@ -139,7 +136,6 @@ export function ControlPanel({ onFilterChange, msgRate, isConnected, solaceData 
       boxShadow: '0 12px 40px rgba(0,0,0,0.6)'
     }}>
 
-
       {/* SEKTION 1: MISSION CLOCK */}
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', fontFamily: 'monospace' }}>
         <div style={{ fontWeight: 'bold', letterSpacing: '2px', fontSize: '1.6rem' }}>
@@ -149,10 +145,6 @@ export function ControlPanel({ onFilterChange, msgRate, isConnected, solaceData 
           {time.toLocaleDateString('en-US', { timeZone: 'UTC', weekday: 'short', day: '2-digit', month: 'short' })}
         </div>
       </div>
-
-
-
-
 
       <h2 style={sectionHeaderStyle}>FILTERS</h2>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>

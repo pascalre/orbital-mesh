@@ -26,7 +26,6 @@ export function InfoPanel() {
     color: '#ccc'
   };
 
-
   return (
     <div style={{
       position: 'absolute',

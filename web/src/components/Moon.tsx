@@ -3,7 +3,6 @@ import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useTexture } from '@react-three/drei';
 
-// Importiere Shader mit dem ?raw Suffix
 import moonVertex from '../shaders/moon.vertex.glsl?raw';
 import moonFragment from '../shaders/moon.fragment.glsl?raw';
 

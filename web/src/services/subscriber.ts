@@ -9,7 +9,7 @@ export interface SolaceConfig {
 
 export class SolaceSubscriber {
   private session: solace.Session | null = null;
-  private factory: solace.SolclientFactory;
+  private factory: typeof solace.SolclientFactory;
   private connected = false;
   private messageCallback: ((payload: any) => void) | null = null;
   private activeTopic: string | null = null;
