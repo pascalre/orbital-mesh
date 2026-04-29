@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Satellite } from './Satellite';
 
 interface SatelliteManagerProps {
@@ -17,10 +17,12 @@ export function SatelliteManager({
   onCountChange
 }: SatelliteManagerProps) {
   const [satelliteMap, setSatelliteMap] = useState<Record<string, any>>({});
+  const lastFilterChange = useRef(Date.now());
 
   useEffect(() => {
     setSatelliteMap({});
     onHoverSatellite(null);
+    lastFilterChange.current = Date.now();
   }, [filterTopic]);
 
   useEffect(() => {
@@ -32,6 +34,10 @@ export function SatelliteManager({
   // 2. Nachrichtenverarbeitung mit robustem Parsing
   useEffect(() => {
     if (!solaceData) return;
+
+    if (Date.now() - lastFilterChange.current < 400) {
+      return;
+    }
 
     try {
       let rawString = "";
