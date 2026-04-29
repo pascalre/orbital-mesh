@@ -6,21 +6,28 @@ interface SatelliteManagerProps {
   solaceData: any;
   isConnected: boolean;
   onHoverSatellite: (data: any) => void;
+  onCountChange?: (count: number) => void;
 }
 
 export function SatelliteManager({ 
   filterTopic, 
   solaceData, 
   isConnected, 
-  onHoverSatellite 
+  onHoverSatellite,
+  onCountChange
 }: SatelliteManagerProps) {
   const [satelliteMap, setSatelliteMap] = useState<Record<string, any>>({});
 
-  // 1. Reset der Map bei Filterwechsel
   useEffect(() => {
     setSatelliteMap({});
     onHoverSatellite(null);
   }, [filterTopic]);
+
+  useEffect(() => {
+    if (onCountChange) {
+      onCountChange(Object.keys(satelliteMap).length);
+    }
+  }, [satelliteMap, onCountChange]);
 
   // 2. Nachrichtenverarbeitung mit robustem Parsing
   useEffect(() => {
@@ -46,17 +53,14 @@ export function SatelliteManager({
 
       const payload = JSON.parse(rawString.substring(jsonStart, jsonEnd + 1));
 
-      // ID Bestimmung
       const satId = payload.id || payload.name || payload.noradId;
       if (!satId) return;
 
-      // Update der Map (nur wenn Koordinaten vorhanden)
       if (payload.lat !== undefined && payload.lng !== undefined) {
         setSatelliteMap(prev => ({
           ...prev,
           [satId]: {
             ...payload,
-            // Sicherstellen, dass Koordinaten Zahlen sind für Three.js
             lat: Number(payload.lat),
             lng: Number(payload.lng),
             alt: Number(payload.alt || 0),

@@ -17,7 +17,7 @@ function getPoints({ numStars = 500 } = {}) {
     const prob = Math.random();
     const light = Math.random();
     
-    function update(t) {
+    function update(t: number) {
       const lightness = prob > 0.8 ? light + Math.sin(t * rate) * 1 : light;
       return lightness;
     }
@@ -31,7 +31,7 @@ function getPoints({ numStars = 500 } = {}) {
 
   const verts = [];
   const colors = [];
-  const positions = [];
+  const positions: any[] = [];
   
   for (let i = 0; i < numStars; i += 1) {
     const p = randomSpherePoint();
@@ -55,7 +55,7 @@ function getPoints({ numStars = 500 } = {}) {
   const points = new THREE.Points(geo, mat);
 
   // Die Update-Logik, die wir im useFrame aufrufen
-  const updateFn = (t) => {
+  const updateFn = (t: number) => {
     points.rotation.y -= 0.00015;
     const currentColors = geo.attributes.color.array as Float32Array;
     

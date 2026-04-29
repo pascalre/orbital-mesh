@@ -16,10 +16,11 @@ import { getSunDirection } from "./utils/astronomy";
 import { useSolace } from "./hooks/useSolace";
 
 function App() {
-  const [activeTopic, setActiveTopic] = useState("earth/sat/tracked/>");
+  const [activeTopic, setActiveTopic] = useState("earth/sat/tracked/*/*/*/>");
   const [activeHoverData, setActiveHoverData] = useState<{name: string, x: number, y: number} | null>(null);
   const [sunDirection] = useState(() => getSunDirection());
   const { data, isConnected, msgRate } = useSolace(activeTopic);
+  const [satelliteCount, setSatelliteCount] = useState(0);
 
   useEffect(() => {
   if (data) {
@@ -32,6 +33,7 @@ function App() {
       {/* UI Overlay */}
 
       <ControlPanel 
+        satelliteCount={satelliteCount}
         onFilterChange={setActiveTopic} 
         msgRate={msgRate} 
         isConnected={isConnected} 
@@ -59,6 +61,7 @@ function App() {
           solaceData={data} 
           isConnected={isConnected}
           onHoverSatellite={setActiveHoverData} 
+          onCountChange={setSatelliteCount}
         />
         {/* Suspense fängt die Ladezeit der 8K Textur ab */}
         <Suspense fallback={null}>

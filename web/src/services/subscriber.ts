@@ -12,7 +12,6 @@ export class SolaceSubscriber {
   private factory: typeof solace.SolclientFactory;
   private connected = false;
   private messageCallback: ((payload: any) => void) | null = null;
-  private activeTopic: string | null = null;
 
   private msgCount = 0;
   private currentRate = 0;
@@ -72,11 +71,9 @@ export class SolaceSubscriber {
 
   public subscribe(topicName: string, onMessage: (payload: any) => void): void {
     if (!this.session) return;
-
-    this.activeTopic = topicName;
     this.messageCallback = onMessage;
 
-    const topic = this.factory.createTopic(topicName);
+    const topic = this.factory.createTopicDestination(topicName);
     try {
       this.session.subscribe(topic, true, topicName, 10000);
       console.log(`📡 Broker-Side Subscribe: ${topicName}`);
@@ -88,7 +85,7 @@ export class SolaceSubscriber {
   public unsubscribe(topicName: string) {
     if (this.session) {
       try {
-        const topic = this.factory.createTopic(topicName);
+        const topic = this.factory.createTopicDestination(topicName);
         this.session.unsubscribe(topic, true, topicName, 10000);
         console.log(`[Solace] Unsubscribe: ${topicName}`);
       } catch (error) {

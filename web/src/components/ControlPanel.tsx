@@ -17,12 +17,13 @@ interface EventLog {
 }
 interface ControlPanelProps {
   onFilterChange: (topic: string) => void;
+  satelliteCount: number;
   msgRate: number;      // Neu als Prop
   isConnected: boolean; // Neu als Prop
   solaceData: any;
 }
 
-export function ControlPanel({ onFilterChange, msgRate, isConnected, solaceData }: ControlPanelProps) {
+export function ControlPanel({ onFilterChange, satelliteCount, msgRate, isConnected, solaceData }: ControlPanelProps) {
   const [events, setEvents] = useState<EventLog[]>([]);
 
   const [time, setTime] = useState(new Date());
@@ -197,7 +198,7 @@ export function ControlPanel({ onFilterChange, msgRate, isConnected, solaceData 
         </div>
         <div style={statRowStyle}>
           <span>Tracked Satellites:</span>
-          <span>todo</span>
+          <span>{satelliteCount}</span>
         </div>
       </div>
 
