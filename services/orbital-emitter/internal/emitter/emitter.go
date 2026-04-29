@@ -21,8 +21,10 @@ type Satellite struct {
 	meta     *sgp4.TLE
 }
 
+const unknown = "UNKNOWN"
+
 func (s Satellite) getCounty() string {
-	return "UNKNOWN"
+	return unknown
 }
 
 func (s Satellite) getProvider() string {
@@ -30,7 +32,7 @@ func (s Satellite) getProvider() string {
 
 	if i != -1 {
 		if _, err := strconv.Atoi(s.meta.Name[:i]); err == nil {
-			return "UNKNOWN"
+			return unknown
 		}
 		return s.meta.Name[:i]
 	}
@@ -95,9 +97,9 @@ func GetLaunchYear(designator string) int {
 	yearPartStr := designator[:2]
 	yearPart, _ := strconv.Atoi(yearPartStr)
 
-	// TLE Logik:
-	// Jahre 58-99 -> 1950er bis 1990er
-	// Jahre 00-57 -> 2000er bis 2057
+	// TLE logic:
+	// years 58-99 -> 1950s to 1990s
+	// years 00-57 -> 2000s to 2057
 	var fullYear int
 	if yearPart >= 58 {
 		fullYear = 1900 + yearPart
