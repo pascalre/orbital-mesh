@@ -50,7 +50,7 @@ const now = new Date();
     // 3. Wolken-Animation (Drift)
     // Wir nutzen state.clock.getElapsedTime(), um einen Wert zu haben, 
     // der immer weiterzählt, unabhängig von der Tageszeit.
-    const cloudDriftSpeed = 0.25; // Justiere hier die Windgeschwindigkeit
+    const cloudDriftSpeed = 0.15; // Justiere hier die Windgeschwindigkeit
     const drift = state.clock.getElapsedTime() * cloudDriftSpeed;
 
     // Wir schicken die Summe aus Erdrotation und Drift an den Shader

@@ -79,8 +79,8 @@ function App() {
           enableDamping={true}      // Macht die Bewegung geschmeidiger
           dampingFactor={0.05}
           autoRotate={!activeHoverData}         // Aktiviert die automatische Drehung
-          autoRotateSpeed={0.2}     // Geschwindigkeit (niedriger = langsamer)
-          minDistance={2.8}
+          autoRotateSpeed={0.08}     // Geschwindigkeit (niedriger = langsamer)
+          minDistance={2.6}
           maxDistance={25}
         />
       </Canvas>
