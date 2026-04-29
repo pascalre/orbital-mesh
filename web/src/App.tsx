@@ -16,7 +16,7 @@ import { getSunDirection } from "./utils/astronomy";
 import { useSolace } from "./hooks/useSolace";
 
 function App() {
-  const [activeTopic, setActiveTopic] = useState("orbital/satellite/location/>");
+  const [activeTopic, setActiveTopic] = useState("earth/sat/tracked/>");
   const [activeHoverData, setActiveHoverData] = useState<{name: string, x: number, y: number} | null>(null);
   const [sunDirection] = useState(() => getSunDirection());
   const { data, isConnected, msgRate } = useSolace(activeTopic);

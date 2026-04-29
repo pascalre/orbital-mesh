@@ -60,7 +60,7 @@ func (e *Emitter) GetSatellites() {
 
 func (e *Emitter) EmitCoordinates() {
 	for _, sat := range e.satelliteCache {
-		topic := fmt.Sprintf("orbital/satellite/location/%s/%s/%s/%d", sat.orbit.toString(), sat.getCounty(), sat.getProvider(), sat.meta.SatelliteNumber)
+		topic := fmt.Sprintf("earth/sat/tracked/%s/%s/%s/%d", sat.orbit.toString(), sat.getCounty(), sat.getProvider(), sat.meta.SatelliteNumber)
 
 		message := buildMessage(sat)
 

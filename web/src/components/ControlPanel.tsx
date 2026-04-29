@@ -69,7 +69,7 @@ export function ControlPanel({ onFilterChange, msgRate, isConnected, solaceData 
     const orbit = getTopicPart(selectedOrbit);
     const country = getTopicPart(selectedCountry);
     const provider = getTopicPart(selectedProvider);
-    return `orbital/satellite/location/${orbit}/${country}/${provider}/>`;
+    return `earth/sat/tracked/${orbit}/${country}/${provider}/>`;
   }, [selectedOrbit, selectedCountry, selectedProvider]);
 
   useEffect(() => {
