@@ -15,10 +15,11 @@ func parseTLE(tleStr string) *sgp4.TLE {
 	return tle
 }
 
-func getGeodeticCoordinates(tle *sgp4.TLE) GeodeticCoordinates {
+func getGeodeticCoordinates(tle *sgp4.TLE) (GeodeticCoordinates, error) {
 	eciState, err := tle.FindPositionAtTime(time.Now())
 	if err != nil {
-		log.Fatalf("Failed to propagate position: %v", err)
+		log.Printf("Warning: Skipping satellite due to SGP4 error: %v", err)
+		return GeodeticCoordinates{}, err
 	}
 
 	lat, lon, alt := eciState.ToGeodetic()
@@ -27,5 +28,5 @@ func getGeodeticCoordinates(tle *sgp4.TLE) GeodeticCoordinates {
 		Latitude:  lat,
 		Longitude: lon,
 		Altitude:  alt,
-	}
+	}, nil
 }

@@ -3,6 +3,7 @@ package emitter
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"orbital_emitter/internal/platform"
 	"strconv"
 	"strings"
@@ -64,14 +65,18 @@ func (e *Emitter) EmitCoordinates() {
 	for _, sat := range e.satelliteCache {
 		topic := fmt.Sprintf("earth/sat/tracked/%s/%s/%s/%d", sat.orbit.toString(), sat.getCounty(), sat.getProvider(), sat.meta.SatelliteNumber)
 
-		message := buildMessage(sat)
+		coordinates, err := getGeodeticCoordinates(sat.meta)
+		if err != nil {
+			log.Printf("Skipping sat %d: %v", sat.meta.SatelliteNumber, err)
+			continue
+		}
+		message := buildMessage(sat, coordinates)
 
 		e.solaceClient.PublishDirectMessage(topic, message)
 	}
 }
 
-func buildMessage(sat Satellite) string {
-	coordinates := getGeodeticCoordinates(sat.meta)
+func buildMessage(sat Satellite, coordinates GeodeticCoordinates) string {
 	satelliteData := map[string]interface{}{
 		"lat":        coordinates.Latitude,
 		"lng":        coordinates.Longitude,
