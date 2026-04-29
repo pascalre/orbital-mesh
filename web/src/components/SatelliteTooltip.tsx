@@ -82,33 +82,25 @@ export const SatelliteTooltip = ({ data, visible, x, y }: SatelliteTooltipProps)
           <span style={valueStyle}>{data.launchYear}</span>
         </div>
         <div style={statRowStyle}>
+          <span>Inclination:</span>
+          <span style={valueStyle}>{data.inc.toFixed(2)}°</span>
+        </div>
+        <div style={statRowStyle}>
+          <span>Eccentricity:</span>
+          <span style={valueStyle}>{data.ecc.toFixed(5)}</span>
+        </div>
+        <div style={statRowStyle}>
+          <span>Latitude:</span>
+          <span style={valueStyle}>{data.lat.toFixed(2)}°</span>
+        </div>
+        <div style={statRowStyle}>
+          <span>Longitude:</span>
+          <span style={valueStyle}>{data.lng.toFixed(2)}°</span>
+        </div>
+        <div style={statRowStyle}>
           <span>Altitude:</span>
           <span style={valueStyle}>{Math.round(data.alt)} km</span>
         </div>
-      </div>
-
-      <h2 style={sectionHeaderStyle}>ORBITAL ELEMENTS</h2>
-      <div style={statRowStyle}>
-        <span>Inclination:</span>
-        <span style={valueStyle}>{data.inc.toFixed(2)}°</span>
-      </div>
-      <div style={statRowStyle}>
-        <span>Eccentricity:</span>
-        <span style={valueStyle}>{data.ecc.toFixed(5)}</span>
-      </div>
-
-      {/* Footer / Location */}
-      <div style={{ 
-        marginTop: '12px', 
-        paddingTop: '8px', 
-        borderTop: '1px solid rgba(255,255,255,0.1)', 
-        display: 'flex', 
-        justifyContent: 'space-between',
-        fontSize: '0.7rem',
-        opacity: 0.6
-      }}>
-        <span>Lat: {data.lat.toFixed(2)}°</span>
-        <span>Lng: {data.lng.toFixed(2)}°</span>
       </div>
     </div>
   );
