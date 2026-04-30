@@ -8,7 +8,6 @@ import { Earth } from './components/Earth';
 import { Sun } from "./components/Sun";
 import ControlPanel from "./components/ControlPanel";
 import { InfoPanel } from "./components/InfoPanel";
-import { OrbitLine } from "./components/OrbitLine";
 import { Moon } from "./components/Moon";
 import { Atmosphere } from "./components/Atmosphere";
 import { SatelliteManager } from "./components/SatelliteManager";
@@ -99,7 +98,7 @@ function App() {
         display: 'block' // Verhindert kleine Abstände unter dem Canvas
       }}>
 
-        <World activeHoverData={activeHoverData}>
+        <World>
           <Earth sunDirection={sunDirection} />
           <Atmosphere sunDirection={sunDirection} />
           { /* activeHoverData && <OrbitLine data={activeHoverData} /> */}
@@ -112,7 +111,6 @@ function App() {
             onCountChange={setSatelliteCount}
           />
         </World>
-        {/* Suspense fängt die Ladezeit der 8K Textur ab */}
         <Suspense fallback={null}>
           <Moon sunDirection={sunDirection}/>
         </Suspense>

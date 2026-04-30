@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { useMemo, useRef } from "react";
+import { useMemo } from "react";
 import { useLoader, useFrame } from "@react-three/fiber";
 
 import earthVertex from "../shaders/earth.vertex.glsl?raw";
@@ -10,8 +10,6 @@ interface EarthProps {
 }
 
 export function Earth({ sunDirection }: EarthProps) {
-  const earthRef = useRef<THREE.Mesh>(null);
-
   const [day, night, clouds] = useLoader(THREE.TextureLoader, [
     "./textures/8k_earth_daymap.jpg",
     "./textures/8k_earth_nightmap.jpg",

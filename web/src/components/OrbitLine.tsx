@@ -2,13 +2,22 @@ import * as THREE from 'three';
 import { useMemo } from 'react';
 
 export function OrbitLine({ data }: { data: any }) {
-  const lineGeometry = useMemo(() => {
+  // 1. Create the material outside of useMemo for efficiency
+  const material = useMemo(() => new THREE.LineBasicMaterial({
+    color: "#00f2ff",
+    transparent: true,
+    opacity: 0.6,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false
+  }), []);
+
+  const orbitLineObject = useMemo(() => {
     if (!data || data.alt === undefined) return null;
 
-    // --- EMERGENCY CALIBRATION ---
-    const LNG_OFFSET = 0;
-    const INC_OFFSET = 95;
-    // ----------------------------
+    // --- CALIBRATION ---
+    const LNG_OFFSET = 105; 
+    const INC_OFFSET = 0;
+    // -------------------
 
     const points = [];
     const segments = 256; 
@@ -16,7 +25,7 @@ export function OrbitLine({ data }: { data: any }) {
     const ecc = data.ecc || 0;
     const a = EARTH_RADIUS + (Number(data.alt) / 6371) * EARTH_RADIUS; 
 
-    // Calculate angles in radians
+    // Convert angles to radians
     const baseLng = (data.lng + LNG_OFFSET) * (Math.PI / 180);
     const baseInc = (data.inc + INC_OFFSET) * (Math.PI / 180);
 
@@ -24,37 +33,29 @@ export function OrbitLine({ data }: { data: any }) {
       const theta = (i / segments) * Math.PI * 2;
       const r = (a * (1 - Math.pow(ecc, 2))) / (1 + ecc * Math.cos(theta));
 
-      // 1. Create point in the orbital plane
-      const x = Math.cos(theta) * r;
-      const y = Math.sin(theta) * r;
-      const z = 0;
+      // Create point in equatorial plane
+      const point = new THREE.Vector3(
+        Math.cos(theta) * r,
+        0,
+        Math.sin(theta) * r
+      );
 
-      const point = new THREE.Vector3(x, y, z);
-
-      // 2. Rotate point by inclination (around X axis)
+      // Apply Inclination (Tilt)
       point.applyAxisAngle(new THREE.Vector3(1, 0, 0), baseInc);
-
-      // 3. Rotate point by longitude (around Y axis)
+      // Apply Longitude (Earth rotation alignment)
       point.applyAxisAngle(new THREE.Vector3(0, 1, 0), baseLng);
 
       points.push(point);
     }
 
-    return new THREE.BufferGeometry().setFromPoints(points);
-    // Important: We add LNG_OFFSET to dependencies to force a rebuild
-  }, [data.id, data.alt, data.lat, data.lng]); 
+    const geometry = new THREE.BufferGeometry().setFromPoints(points);
+    
+    // Return a full Three.js Line object
+    return new THREE.Line(geometry, material);
+  }, [data.id, data.alt, data.lng, data.inc, material]); 
 
-  if (!lineGeometry) return null;
+  if (!orbitLineObject) return null;
 
-  return (
-    <line geometry={lineGeometry}>
-      <lineBasicMaterial 
-        color="#00f2ff" 
-        transparent 
-        opacity={0.8} 
-        blending={THREE.AdditiveBlending}
-        depthWrite={false}
-      />
-    </line>
-  );
+  // Use <primitive /> to bypass all JSX/SVG name conflicts
+  return <primitive object={orbitLineObject} />;
 }
