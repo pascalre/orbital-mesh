@@ -16,23 +16,25 @@ import { SatelliteTooltip } from "./components/SatelliteTooltip";
 import { getSunDirection } from "./utils/astronomy";
 import { useSolace } from "./hooks/useSolace";
 
-function World({ children, activeHoverData }: { children: React.ReactNode, activeHoverData: any }) {
+function World({ children }: { children: React.ReactNode }) {
   const worldRef = useRef<THREE.Group>(null);
 
-useFrame(() => {
-  if (worldRef.current) {
-    const now = new Date();
-    const utcHours = now.getUTCHours() + now.getUTCMinutes() / 60;
+  useFrame(() => {
+    if (worldRef.current) {
+      const now = new Date();
+      const utcHours = now.getUTCHours() + now.getUTCMinutes() / 60 + now.getUTCSeconds() / 3600;
+      
+        // Die Basis-Rotation (Zeitkomponente)
+      const dayRotation = ((utcHours - 12) / 24) * 2 * Math.PI;
+        // 12:00 UTC ist der Punkt, an dem der Nullmeridian (Greenwich) zur Sonne schaut.
+        // Die 1.5 * Math.PI ist der Korrekturwert, um den Nullmeridian der Textur 
+        // mit der mathematischen Z-Achse zu decken.
+      const BIAS_DEGREES = 105; // <--- ÄNDERE DIESEN WERT (z.B. 10, 20, -30, 90...)
+      const CALIBRATION = Math.PI + (BIAS_DEGREES * Math.PI / 180);
     
-    const dayRotation = -(utcHours / 24) * 3 * Math.PI;
-    
-    // JUSTIERUNG: Ändere diesen Wert in 15-Grad-Schritten (Math.PI / 12),
-    // bis ein Satellit über einer bekannten Stadt (z.B. London) exakt passt.
-    const CALIBRATION_OFFSET = Math.PI + (Math.PI / 12);
-    
-    worldRef.current.rotation.y = dayRotation + CALIBRATION_OFFSET;
-  }
-});
+      worldRef.current.rotation.y = dayRotation + CALIBRATION;
+    }
+  });
 
   return <group ref={worldRef}>{children}</group>;
 }

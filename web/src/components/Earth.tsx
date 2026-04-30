@@ -36,36 +36,15 @@ export function Earth({ sunDirection }: EarthProps) {
   }, [day, night, clouds]);
 
   useFrame((state) => {
-    if (!earthRef.current) return;
-
-const now = new Date();
-    const utcHours = now.getUTCHours() + now.getUTCMinutes() / 60 + now.getUTCSeconds() / 3600;
-
-    const dayRotation = -(utcHours / 24) * 2 * Math.PI;
-    const TEXTURE_OFFSET = Math.PI;
-
-    // 3. Kombination
-    earthRef.current.rotation.y = dayRotation + TEXTURE_OFFSET;
-
-    // 3. Wolken-Animation (Drift)
-    // Wir nutzen state.clock.getElapsedTime(), um einen Wert zu haben, 
-    // der immer weiterzählt, unabhängig von der Tageszeit.
-    const cloudDriftSpeed = 0.15; // Justiere hier die Windgeschwindigkeit
-    const drift = state.clock.getElapsedTime() * cloudDriftSpeed;
-
-    // Wir schicken die Summe aus Erdrotation und Drift an den Shader
-    // So bewegen sich die Wolken MIT der Erde, aber driften langsam weiter.
-    earthMaterial.uniforms.uTime.value = earthRef.current.rotation.y + drift;
-    
-    // 4. Sonnenrichtung
+    // NUR NOCH DIE WOLKEN-ANIMATION
+    // Da sich die Gruppe dreht, driften die Wolken hier relativ zur Erdoberfläche
+    earthMaterial.uniforms.uTime.value = state.clock.getElapsedTime() * 0.001;
     earthMaterial.uniforms.uSunDirection.value.copy(sunDirection);
   });
 
   return (
-    <group>
-      <mesh ref={earthRef} material={earthMaterial}>
-        <sphereGeometry args={[2, 64, 64]} />
-      </mesh>
-    </group>
+    <mesh material={earthMaterial}>
+      <sphereGeometry args={[2, 64, 64]} />
+    </mesh>
   );
 }
