@@ -99,18 +99,18 @@ function App() {
         display: 'block' // Verhindert kleine Abstände unter dem Canvas
       }}>
 
-<World activeHoverData={activeHoverData}>
-        <Earth sunDirection={sunDirection} />
-        <Atmosphere sunDirection={sunDirection} />
-        {activeHoverData && <OrbitLine data={activeHoverData} />}
-        <SatelliteManager 
-          key={activeTopic}
-          filterTopic={activeTopic} 
-          solaceData={data} 
-          isConnected={isConnected}
-          onHoverSatellite={setActiveHoverData} 
-          onCountChange={setSatelliteCount}
-        />
+        <World activeHoverData={activeHoverData}>
+          <Earth sunDirection={sunDirection} />
+          <Atmosphere sunDirection={sunDirection} />
+          { /* activeHoverData && <OrbitLine data={activeHoverData} /> */}
+          <SatelliteManager 
+            key={activeTopic}
+            filterTopic={activeTopic} 
+            solaceData={data} 
+            isConnected={isConnected}
+            onHoverSatellite={setActiveHoverData} 
+            onCountChange={setSatelliteCount}
+          />
         </World>
         {/* Suspense fängt die Ladezeit der 8K Textur ab */}
         <Suspense fallback={null}>

@@ -25,15 +25,15 @@ export const SatelliteTooltip = ({ data, visible, x, y }: SatelliteTooltipProps)
 
   // Gemeinsame Styles vom ControlPanel übernommen
   const sectionHeaderStyle: React.CSSProperties = {
-    fontSize: '0.85rem',
+    fontSize: '0.95rem',
     fontWeight: 'bold',
     borderBottom: '1px solid rgba(255, 255, 255, 0.2)',
-    paddingBottom: '3px',
-    marginBottom: '8px',
-    marginTop: '12px',
+    paddingBottom: '4px',
+    marginBottom: '10px',
+    marginTop: '18px',
     textTransform: 'uppercase',
     letterSpacing: '1px',
-    color: '#aaa'
+    color: '#ccc'
   };
 
   const statRowStyle: React.CSSProperties = {
@@ -68,7 +68,7 @@ export const SatelliteTooltip = ({ data, visible, x, y }: SatelliteTooltipProps)
     }}>
       {/* Header Bereich */}
       <h2 style={{ ...sectionHeaderStyle, marginTop: 0, color: 'white', fontSize: '0.95rem' }}>
-        {data.name}
+        {data.name} 🛰️ 
       </h2>
 
       {/* Stats Sektion im Kachel-Look */}

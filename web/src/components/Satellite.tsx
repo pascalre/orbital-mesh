@@ -46,7 +46,7 @@ export function Satellite({ data, ...props }: SatelliteProps) {
       */}
       <meshStandardMaterial 
         color="#00c897" 
-        emissive="#00c897" 
+        emissive="#009670" 
         emissiveIntensity={2} 
         toneMapped={false} // Verhindert, dass Bloom den Effekt zu sehr abschwächt
       />
