@@ -57,7 +57,7 @@ export function ControlPanel({ onFilterChange, satelliteCount, msgRate, isConnec
         topic: topicName,
         altitude: payload.alt || payload.altitude || 0,
         latitude: payload.lat || payload.latitude || 0,
-        longitude: payload.lon || payload.longitude || 0,
+        longitude: payload.lng || payload.longitude || 0,
       };
 
       setEvents(prev => [newEvent, ...prev].slice(0, 5));
@@ -212,12 +212,9 @@ export function ControlPanel({ onFilterChange, satelliteCount, msgRate, isConnec
           <p style={{ fontSize: '0.85rem', opacity: 0.5, fontStyle: 'italic' }}>Waiting for orbital telemetry...</p>
         )}
         {events.map((event) => (
-
-
-      <p style={{ fontSize: '0.65rem', fontFamily: 'monospace', borderLeft: '3px solid #00c897', paddingLeft: '12px', lineHeight: '1.4' }}>
-            {event.timestamp}<br />{event.topic}<br />LAT: {event.latitude?.toFixed(2)}, LON: {event.longitude?.toFixed(2)}, ALT: {event.altitude.toFixed(2)}
-
-</p>
+        <p style={{ fontSize: '0.65rem', fontFamily: 'monospace', borderLeft: '3px solid #00c897', paddingLeft: '12px', lineHeight: '1.4' }}>
+              {event.timestamp}<br />{event.topic}<br />LAT: {event.latitude?.toFixed(2)}, LON: {event.longitude?.toFixed(2)}, ALT: {event.altitude.toFixed(2)}
+        </p>
         ))}
       </div>
 
