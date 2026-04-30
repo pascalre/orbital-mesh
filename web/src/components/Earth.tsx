@@ -42,7 +42,7 @@ const now = new Date();
     const utcHours = now.getUTCHours() + now.getUTCMinutes() / 60 + now.getUTCSeconds() / 3600;
 
     const dayRotation = -(utcHours / 24) * 2 * Math.PI;
-    const TEXTURE_OFFSET = Math.PI; 
+    const TEXTURE_OFFSET = Math.PI;
 
     // 3. Kombination
     earthRef.current.rotation.y = dayRotation + TEXTURE_OFFSET;

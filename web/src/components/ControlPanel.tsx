@@ -174,7 +174,7 @@ export function ControlPanel({ onFilterChange, satelliteCount, msgRate, isConnec
       <h2 style={sectionHeaderStyle}>LIVE STATS</h2>
       <div style={{ backgroundColor: 'rgba(255,255,255,0.05)', padding: '12px', borderRadius: '8px' }}>
         <div style={statRowStyle}>
-          <span>Status:</span>
+          <span>Status</span>
           <span style={{ color: isConnected ? '#00c897' : '#ff4444', fontWeight: 'bold' }}>
             {isConnected ? '● ONLINE' : '○ OFFLINE'}
           </span>
@@ -182,7 +182,7 @@ export function ControlPanel({ onFilterChange, satelliteCount, msgRate, isConnec
         
         {/* Subscription jetzt wieder zweizeilig für bessere Lesbarkeit */}
         <div style={{ ...statRowStyle, flexDirection: 'column', gap: '4px', marginBottom: '10px' }}>
-          <span>Subscription:</span>
+          <span>Subscription</span>
           <span style={{ 
             opacity: 0.8, 
             fontSize: '0.85rem', 
@@ -195,12 +195,12 @@ export function ControlPanel({ onFilterChange, satelliteCount, msgRate, isConnec
         </div>
 
         <div style={statRowStyle}>
-          <span>Message Rate:</span>
-          <span>{msgRate} msg/s</span>
+          <span>Message Rate</span>
+          <span style={{ fontFamily: 'monospace' }}>{msgRate} msg/s</span>
         </div>
         <div style={statRowStyle}>
-          <span>Tracked Satellites:</span>
-          <span>{satelliteCount}</span>
+          <span>Tracked Satellites</span>
+          <span style={{ fontFamily: 'monospace' }}>{satelliteCount}</span>
         </div>
       </div>
 

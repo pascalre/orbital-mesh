@@ -1,13 +1,14 @@
 import * as THREE from "three";
-import { Suspense, useState, useEffect } from "react";
-import { Canvas } from "@react-three/fiber";
+import { Suspense, useState, useEffect, useRef } from "react";
+import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import Nebula from "./Nebula";
 import Starfield from "./Starfield";
 import { Earth } from './components/Earth';
 import { Sun } from "./components/Sun";
 import ControlPanel from "./components/ControlPanel";
-import {InfoPanel } from "./components/InfoPanel";
+import { InfoPanel } from "./components/InfoPanel";
+import { OrbitLine } from "./components/OrbitLine";
 import { Moon } from "./components/Moon";
 import { Atmosphere } from "./components/Atmosphere";
 import { SatelliteManager } from "./components/SatelliteManager";
@@ -15,18 +16,67 @@ import { SatelliteTooltip } from "./components/SatelliteTooltip";
 import { getSunDirection } from "./utils/astronomy";
 import { useSolace } from "./hooks/useSolace";
 
+function World({ children, activeHoverData }: { children: React.ReactNode, activeHoverData: any }) {
+  const worldRef = useRef<THREE.Group>(null);
+
+useFrame(() => {
+  if (worldRef.current) {
+    const now = new Date();
+    const utcHours = now.getUTCHours() + now.getUTCMinutes() / 60;
+    
+    const dayRotation = -(utcHours / 24) * 3 * Math.PI;
+    
+    // JUSTIERUNG: Ändere diesen Wert in 15-Grad-Schritten (Math.PI / 12),
+    // bis ein Satellit über einer bekannten Stadt (z.B. London) exakt passt.
+    const CALIBRATION_OFFSET = Math.PI + (Math.PI / 12);
+    
+    worldRef.current.rotation.y = dayRotation + CALIBRATION_OFFSET;
+  }
+});
+
+  return <group ref={worldRef}>{children}</group>;
+}
+
 function App() {
   const [activeTopic, setActiveTopic] = useState("earth/sat/tracked/*/*/*/>");
-  const [activeHoverData, setActiveHoverData] = useState<{name: string, x: number, y: number} | null>(null);
+  const [activeHoverData, setActiveHoverData] = useState<any | null>(null);
   const [sunDirection] = useState(() => getSunDirection());
   const { data, isConnected, msgRate } = useSolace(activeTopic);
   const [satelliteCount, setSatelliteCount] = useState(0);
 
   useEffect(() => {
-  if (data) {
-    console.log("🟢 App.tsx hat Daten empfangen:", data);
-  }
-}, [data]);
+    if (data) {
+      console.log("🟢 App.tsx hat Daten empfangen:", data);
+    }
+  }, [data]);
+
+  useEffect(() => {
+    if (!data || !activeHoverData) return;
+
+    try {
+      let rawString = typeof data.getBinaryAttachment === 'function' 
+        ? data.getBinaryAttachment() 
+        : data;
+      
+      const jsonStart = rawString.indexOf('{');
+      const jsonEnd = rawString.lastIndexOf('}');
+      if (jsonStart === -1) return;
+      const payload = JSON.parse(rawString.substring(jsonStart, jsonEnd + 1));
+
+      const satId = payload.id || payload.name || payload.noradId;
+
+      if (satId === activeHoverData.id) {
+        setActiveHoverData((prev: any) => ({
+          ...prev,
+          ...payload,
+          x: prev.x,
+          y: prev.y
+        }));
+      }
+    } catch (e) {
+      console.error("Tooltip Live-Update Error:", e);
+    }
+  }, [data]);
 
   return (
     <div style={{ width: '100vw', height: '100vh', position: 'relative' }}>
@@ -53,8 +103,10 @@ function App() {
         display: 'block' // Verhindert kleine Abstände unter dem Canvas
       }}>
 
+<World activeHoverData={activeHoverData}>
         <Earth sunDirection={sunDirection} />
         <Atmosphere sunDirection={sunDirection} />
+        {activeHoverData && <OrbitLine data={activeHoverData} />}
         <SatelliteManager 
           key={activeTopic}
           filterTopic={activeTopic} 
@@ -63,6 +115,7 @@ function App() {
           onHoverSatellite={setActiveHoverData} 
           onCountChange={setSatelliteCount}
         />
+        </World>
         {/* Suspense fängt die Ladezeit der 8K Textur ab */}
         <Suspense fallback={null}>
           <Moon sunDirection={sunDirection}/>

@@ -62,7 +62,7 @@ export const SatelliteTooltip = ({ data, visible, x, y }: SatelliteTooltipProps)
       width: '280px',
       backdropFilter: 'blur(10px)',
       border: '1px solid rgba(255, 255, 255, 0.1)',
-      fontFamily: 'sans-serif',
+      fontFamily: 'monospace',
       boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
       pointerEvents: 'none'
     }}>
@@ -74,31 +74,31 @@ export const SatelliteTooltip = ({ data, visible, x, y }: SatelliteTooltipProps)
       {/* Stats Sektion im Kachel-Look */}
       <div style={{ backgroundColor: 'rgba(255,255,255,0.05)', padding: '10px', borderRadius: '8px' }}>
         <div style={statRowStyle}>
-          <span>NORAD ID:</span>
+          <span>NORAD ID</span>
           <span style={valueStyle}>{data.id}</span>
         </div>
         <div style={statRowStyle}>
-          <span>Launch Year:</span>
+          <span>Launch Year</span>
           <span style={valueStyle}>{data.launchYear}</span>
         </div>
         <div style={statRowStyle}>
-          <span>Inclination:</span>
+          <span>Inclination</span>
           <span style={valueStyle}>{data.inc.toFixed(2)}°</span>
         </div>
         <div style={statRowStyle}>
-          <span>Eccentricity:</span>
+          <span>Eccentricity</span>
           <span style={valueStyle}>{data.ecc.toFixed(5)}</span>
         </div>
         <div style={statRowStyle}>
-          <span>Latitude:</span>
+          <span>Latitude</span>
           <span style={valueStyle}>{data.lat.toFixed(2)}°</span>
         </div>
         <div style={statRowStyle}>
-          <span>Longitude:</span>
+          <span>Longitude</span>
           <span style={valueStyle}>{data.lng.toFixed(2)}°</span>
         </div>
         <div style={statRowStyle}>
-          <span>Altitude:</span>
+          <span>Altitude</span>
           <span style={valueStyle}>{Math.round(data.alt)} km</span>
         </div>
       </div>
