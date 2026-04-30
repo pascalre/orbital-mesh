@@ -25,4 +25,4 @@ dist-ssr
 
 services/bin
 
-.env
+web/.env
