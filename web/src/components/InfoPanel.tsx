@@ -36,11 +36,13 @@ export function InfoPanel() {
       backgroundColor: 'rgba(0, 0, 0, 0.8)',
       padding: '20px 25px',
       borderRadius: '14px',
-      width: '430px', // Etwas schmaler als das ControlPanel für die Balance
+      width: '430px',
       backdropFilter: 'blur(12px)',
       border: '1px solid rgba(255, 255, 255, 0.15)',
       fontFamily: 'sans-serif',
-      boxShadow: '0 12px 40px rgba(0,0,0,0.6)'
+      boxShadow: '0 12px 40px rgba(0,0,0,0.6)',
+      maxHeight: 'calc(100vh - 100px)',
+      overflowY: 'auto',
     }}>
       
       <img src={solaceLogo} width="125px" alt="Solace Logo" style={{ marginBottom: '12px' }} />

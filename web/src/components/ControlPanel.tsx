@@ -134,7 +134,9 @@ export function ControlPanel({ onFilterChange, satelliteCount, msgRate, isConnec
       backdropFilter: 'blur(12px)',
       border: '1px solid rgba(255, 255, 255, 0.15)',
       fontFamily: 'sans-serif',
-      boxShadow: '0 12px 40px rgba(0,0,0,0.6)'
+      boxShadow: '0 12px 40px rgba(0,0,0,0.6)',
+      maxHeight: 'calc(100vh - 100px)',
+      overflowY: 'auto',
     }}>
 
       {/* SEKTION 1: MISSION CLOCK */}

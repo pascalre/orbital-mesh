@@ -23,4 +23,6 @@ dist-ssr
 *.sln
 *.sw?
 
-bin
+services/bin
+
+.env
