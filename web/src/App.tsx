@@ -45,12 +45,6 @@ function App() {
   const [satelliteCount, setSatelliteCount] = useState(0);
 
   useEffect(() => {
-    if (data) {
-      console.log("🟢 App.tsx hat Daten empfangen:", data);
-    }
-  }, [data]);
-
-  useEffect(() => {
     if (!data || !activeHoverData) return;
 
     try {

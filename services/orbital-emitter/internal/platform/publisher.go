@@ -74,6 +74,4 @@ func (s *SolaceClient) PublishDirectMessage(topic string, messageBody string) {
 	if publishErr != nil {
 		panic(publishErr)
 	}
-
-	log.Printf("Published message to topic: %s", topic)
 }
