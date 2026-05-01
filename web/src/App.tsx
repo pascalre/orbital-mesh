@@ -23,12 +23,8 @@ function World({ children }: { children: React.ReactNode }) {
       const now = new Date();
       const utcHours = now.getUTCHours() + now.getUTCMinutes() / 60 + now.getUTCSeconds() / 3600;
       
-        // Die Basis-Rotation (Zeitkomponente)
       const dayRotation = ((utcHours - 12) / 24) * 2 * Math.PI;
-        // 12:00 UTC ist der Punkt, an dem der Nullmeridian (Greenwich) zur Sonne schaut.
-        // Die 1.5 * Math.PI ist der Korrekturwert, um den Nullmeridian der Textur 
-        // mit der mathematischen Z-Achse zu decken.
-      const BIAS_DEGREES = 105; // <--- ÄNDERE DIESEN WERT (z.B. 10, 20, -30, 90...)
+      const BIAS_DEGREES = 90; // <--- ÄNDERE DIESEN WERT (z.B. 10, 20, -30, 90...)
       const CALIBRATION = Math.PI + (BIAS_DEGREES * Math.PI / 180);
     
       worldRef.current.rotation.y = dayRotation + CALIBRATION;
