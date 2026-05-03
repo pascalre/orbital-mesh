@@ -18,18 +18,26 @@ import { useSolace } from "./hooks/useSolace";
 function World({ children }: { children: React.ReactNode }) {
   const worldRef = useRef<THREE.Group>(null);
 
-  useFrame(() => {
-    if (worldRef.current) {
-      const now = new Date();
-      const utcHours = now.getUTCHours() + now.getUTCMinutes() / 60 + now.getUTCSeconds() / 3600;
-      
-      const dayRotation = ((utcHours - 12) / 24) * 2 * Math.PI;
-      const BIAS_DEGREES = 90; // <--- ÄNDERE DIESEN WERT (z.B. 10, 20, -30, 90...)
-      const CALIBRATION = Math.PI + (BIAS_DEGREES * Math.PI / 180);
+useFrame(() => {
+  if (worldRef.current) {
+    const now = new Date();
     
-      worldRef.current.rotation.y = dayRotation + CALIBRATION;
-    }
-  });
+    // 1. Genaue UTC-Zeit in Stunden (0-24)
+    const utcHours = now.getUTCHours() + now.getUTCMinutes() / 60 + now.getUTCSeconds() / 3600;
+
+    // 2. Die Rotation der Erde
+    // 15 Grad pro Stunde = (Math.PI / 12) Radiant pro Stunde.
+    // Wir nehmen -1, da die Erde von oben gesehen im Uhrzeigersinn rotiert (West -> Ost).
+    const rotationSpeed = -(utcHours * (Math.PI / 12));
+
+    // 3. Kalibrierung (Dein Bias)
+    // Dieser Wert sollte nun über Tage hinweg stabil bleiben.
+    // Der Bias korrigiert, wo der Nullmeridian auf deiner Textur liegt.
+    const TEXTURE_BIAS = (0 * Math.PI) / 180; 
+    
+    worldRef.current.rotation.y = rotationSpeed + TEXTURE_BIAS;
+  }
+});
 
   return <group ref={worldRef}>{children}</group>;
 }

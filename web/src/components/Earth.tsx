@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { useMemo } from "react";
+import { useMemo, useRef } from "react"; // useRef importieren!
 import { useLoader, useFrame } from "@react-three/fiber";
 
 import earthVertex from "../shaders/earth.vertex.glsl?raw";
@@ -10,6 +10,9 @@ interface EarthProps {
 }
 
 export function Earth({ sunDirection }: EarthProps) {
+  // 1. Die fehlende Referenz deklarieren
+  const meshRef = useRef<THREE.Mesh>(null);
+
   const [day, night, clouds] = useLoader(THREE.TextureLoader, [
     "./textures/8k_earth_daymap.jpg",
     "./textures/8k_earth_nightmap.jpg",
@@ -34,14 +37,27 @@ export function Earth({ sunDirection }: EarthProps) {
   }, [day, night, clouds]);
 
   useFrame((state) => {
-    // NUR NOCH DIE WOLKEN-ANIMATION
-    // Da sich die Gruppe dreht, driften die Wolken hier relativ zur Erdoberfläche
-    earthMaterial.uniforms.uTime.value = state.clock.getElapsedTime() * 0.001;
-    earthMaterial.uniforms.uSunDirection.value.copy(sunDirection);
+    // Sicherstellen, dass das Mesh bereits geladen ist
+    if (meshRef.current) {
+      // Wolken-Animation
+      earthMaterial.uniforms.uTime.value = state.clock.getElapsedTime() * 0.001;
+
+      // Die Sonnenrichtung in den lokalen Raum der Erde umrechnen,
+      // damit die Ausleuchtung trotz Erdrotation statisch bleibt.
+      const inverseWorldMatrix = new THREE.Matrix4();
+      inverseWorldMatrix.copy(meshRef.current.matrixWorld).invert();
+      
+      const localSun = sunDirection.clone().applyMatrix4(inverseWorldMatrix).normalize();
+      
+      earthMaterial.uniforms.uSunDirection.value.copy(localSun);
+    }
   });
 
   return (
-    <mesh material={earthMaterial}>
+    <mesh 
+      ref={meshRef} // <--- SEHR WICHTIG: Die Referenz hier zuweisen!
+      material={earthMaterial}
+    >
       <sphereGeometry args={[2, 64, 64]} />
     </mesh>
   );
