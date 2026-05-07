@@ -18,19 +18,19 @@ func NewEngine(e *emitter.Emitter) *Engine {
 func (eng *Engine) Start(ctx context.Context) {
 	eng.emitter.GetSatellites()
 
-	fastTicker := time.NewTicker(1 * time.Second)
-	slowTicker := time.NewTicker(2*time.Hour + 1*time.Minute)
-	defer fastTicker.Stop()
-	defer slowTicker.Stop()
+	telemetryTicker := time.NewTicker(1 * time.Second)
+	catalogRefreshTicker := time.NewTicker(24 * time.Hour)
+	defer telemetryTicker.Stop()
+	defer catalogRefreshTicker.Stop()
 
 	log.Println("Started orbital emitter engine...")
 
 	for {
 		select {
-		case <-fastTicker.C:
+		case <-telemetryTicker.C:
 			eng.emitter.EmitCoordinates()
 
-		case <-slowTicker.C:
+		case <-catalogRefreshTicker.C:
 			log.Println("Refresh satellite cache from Celestrak...")
 			eng.emitter.GetSatellites()
 
