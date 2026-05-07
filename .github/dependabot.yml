@@ -1,0 +1,11 @@
+version: 2
+updates:
+  - package-ecosystem: "gomod"
+    directory: "/services/orbital-emitter"
+    schedule:
+      interval: "daily"
+
+  - package-ecosystem: "npm"
+    directory: "/web"
+    schedule:
+      interval: "daily"
