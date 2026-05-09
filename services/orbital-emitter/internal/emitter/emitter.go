@@ -67,7 +67,6 @@ func (e *Emitter) EmitCoordinates() {
 			continue
 		}
 		message := buildMessage(sat, coordinates)
-		log.Printf("Emitting for sat %d: %s on topic %s", sat.meta.SatelliteNumber, message, topic)
 
 		e.solaceClient.PublishDirectMessage(topic, message)
 	}

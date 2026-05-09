@@ -18,7 +18,7 @@ func NewEngine(e *emitter.Emitter) *Engine {
 func (eng *Engine) Start(ctx context.Context) {
 	eng.emitter.GetSatellites()
 
-	telemetryTicker := time.NewTicker(1 * time.Second)
+	telemetryTicker := time.NewTicker(10 * time.Second)
 	catalogRefreshTicker := time.NewTicker(24 * time.Hour)
 	defer telemetryTicker.Stop()
 	defer catalogRefreshTicker.Stop()
