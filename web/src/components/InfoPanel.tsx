@@ -117,7 +117,7 @@ export function InfoPanel() {
                 <span style={{ color: '#00c897', fontWeight: 'bold', fontSize: '0.75rem' }}>3D VISUALIZATION</span>
               </div>
               <p style={{ margin: 0, opacity: 0.8, fontSize: '0.8rem' }}>
-                React & <strong>Three.js</strong> consume the stream via WebSockets within a WebGL environment.
+                <strong>React & Three.js</strong> consume the stream via <strong>WebSockets</strong> within a WebGL environment.
               </p>
             </div>
           </div>
