@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { Suspense, useState, useEffect, useRef } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
-import Starfield from "./Starfield";
+import { Starfield } from "./components/Starfield";
 import { Earth } from './components/Earth';
 import { Sun } from "./components/Sun";
 import ControlPanel from "./components/ControlPanel";
