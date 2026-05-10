@@ -1,4 +1,4 @@
-import { useRef, useMemo } from 'react';
+import { useRef, useMemo, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { geodeticToVec3 } from '../utils/coordinateConversion';
@@ -12,16 +12,20 @@ interface SatelliteProps extends React.ComponentPropsWithoutRef<'mesh'> {
   name: string;
 }
 
-export function Satellite({ data, ...props }: SatelliteProps) {
+export function Satellite({ data, onPointerOver, onPointerOut, ...props }: SatelliteProps) {
   const meshRef = useRef<THREE.Mesh>(null);
+  const [hovered, setHovered] = useState(false);
 
   const targetPosition = useMemo(() => {
     return geodeticToVec3(data.lat, data.lng, data.alt);
   }, [data.lat, data.lng, data.alt]);
 
-  useFrame(() => {
+  useFrame((state, delta) => {
     if (meshRef.current) {
       meshRef.current.position.lerp(targetPosition, 0.1);
+
+      const targetScale = hovered ? 1.75 : 1;
+      meshRef.current.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), 0.15);
     }
   });
 
@@ -29,13 +33,20 @@ export function Satellite({ data, ...props }: SatelliteProps) {
     <mesh
       ref={meshRef}
       {...props}
+      onPointerOver={(e) => {
+        setHovered(true);
+        if (onPointerOver) onPointerOver(e);
+      }}
+      onPointerOut={(e) => {
+        setHovered(false);
+        if (onPointerOut) onPointerOut(e);
+      }}
     >
       <sphereGeometry args={[0.03, 16, 16]} />
-
       <meshStandardMaterial
-        color="#00c897"
-        emissive="#009670"
-        emissiveIntensity={2}
+        color={hovered ? "#ffeb3b" : "#00c897"}
+        emissive={hovered ? "#ffeb3b" : "#009670"}
+        emissiveIntensity={hovered ? 5 : 2}
         toneMapped={false}
       />
     </mesh>
