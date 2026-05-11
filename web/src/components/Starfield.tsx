@@ -45,11 +45,41 @@ export function Starfield({ numStars = 4000 }) {
   return (
     <points ref={meshRef}>
       <bufferGeometry>
-        <bufferAttribute attach="attributes-position" count={numStars} array={positions} itemSize={3} />
-        <bufferAttribute attach="attributes-color" count={numStars} array={colors} itemSize={3} />
-        <bufferAttribute attach="attributes-aSize" count={numStars} array={sizes} itemSize={1} />
-        <bufferAttribute attach="attributes-aSpeed" count={numStars} array={speeds} itemSize={1} />
-        <bufferAttribute attach="attributes-aBrightness" count={numStars} array={brightness} itemSize={1} />
+        <bufferAttribute
+          attach="attributes-position"
+          count={positions.length / 3}
+          array={positions}
+          itemSize={3}
+          args={[positions, 3]}
+        />
+        <bufferAttribute
+          attach="attributes-color"
+          count={colors.length / 3}
+          array={colors}
+          itemSize={3}
+          args={[colors, 3]}
+        />
+        <bufferAttribute
+          attach="attributes-aSize"
+          count={sizes.length}
+          array={sizes}
+          itemSize={1}
+          args={[sizes, 1]}
+        />
+        <bufferAttribute
+          attach="attributes-aSpeed"
+          count={speeds.length}
+          array={speeds}
+          itemSize={1}
+          args={[speeds, 1]}
+        />
+        <bufferAttribute
+          attach="attributes-aBrightness"
+          count={brightness.length}
+          array={brightness}
+          itemSize={1}
+          args={[brightness, 1]}
+        />
       </bufferGeometry>
       <shaderMaterial
         vertexColors

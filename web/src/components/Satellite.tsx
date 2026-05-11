@@ -1,5 +1,5 @@
 import { useRef, useMemo, useState } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { useFrame, type ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
 import { geodeticToVec3 } from '../utils/coordinateConversion';
 
@@ -20,7 +20,7 @@ export function Satellite({ data, onPointerOver, onPointerOut, ...props }: Satel
     return geodeticToVec3(data.lat, data.lng, data.alt);
   }, [data.lat, data.lng, data.alt]);
 
-  useFrame((state, delta) => {
+  useFrame(() => {
     if (meshRef.current) {
       meshRef.current.position.lerp(targetPosition, 0.1);
 
@@ -33,13 +33,17 @@ export function Satellite({ data, onPointerOver, onPointerOut, ...props }: Satel
     <mesh
       ref={meshRef}
       {...props}
-      onPointerOver={(e) => {
+      onPointerOver={(e: ThreeEvent<PointerEvent>) => {
         setHovered(true);
-        if (onPointerOver) onPointerOver(e);
+        if (typeof onPointerOver === 'function') {
+          onPointerOver(e);
+        }
       }}
-      onPointerOut={(e) => {
+      onPointerOut={(e: ThreeEvent<PointerEvent>) => {
         setHovered(false);
-        if (onPointerOut) onPointerOut(e);
+        if (typeof onPointerOut === 'function') {
+          onPointerOut(e);
+        }
       }}
     >
       <sphereGeometry args={[0.03, 16, 16]} />
