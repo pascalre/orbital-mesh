@@ -1,11 +1,16 @@
 import { useEffect, useState, useRef } from 'react';
 import { solaceSubscriber } from '../services/subscriber';
 
-export const useSolace = (topic: string) => {
+export const useSolace = (topic: string | string[]) => {
   const [data, setData] = useState<any>(null);
   const [msgRate, setMsgRate] = useState(0);
   const [isConnected, setIsConnected] = useState(false);
   const [satelliteCount, setSatelliteCount] = useState(0);
+
+  // Normalize to a stable, order-independent key so effects only re-run when the
+  // set of topics actually changes.
+  const topics = Array.isArray(topic) ? topic : [topic];
+  const topicKey = [...topics].sort().join('|');
 
   const activeSubscriptionRef = useRef<string | null>(null);
   const activeSatellitesRef = useRef(new Set<string>());
@@ -33,7 +38,7 @@ export const useSolace = (topic: string) => {
         }
 
         setIsConnected(true);
-        subscribeToTopic(topic);
+        subscribeToTopics(topics);
 
         solaceSubscriber.startRateCalculation((rawRate) => {
           const nextRate = smoothedRateRef.current + ALPHA * (rawRate - smoothedRateRef.current);
@@ -49,33 +54,40 @@ export const useSolace = (topic: string) => {
     init();
   }, []);
 
-  const subscribeToTopic = (targetTopic: string) => {
-    if (activeSubscriptionRef.current && activeSubscriptionRef.current !== targetTopic) {
-      solaceSubscriber.unsubscribe(activeSubscriptionRef.current);
-    }
+  const subscribeToTopics = (targetTopics: string[]) => {
+    const targetKey = [...targetTopics].sort().join('|');
+
+    // Swap the whole subscription set when the region/filter changes.
+    solaceSubscriber.unsubscribeAll();
 
     setData(null);
     activeSatellitesRef.current.clear();
     setSatelliteCount(0);
 
-    solaceSubscriber.subscribe(targetTopic, (msg) => {
+    solaceSubscriber.subscribeMany(targetTopics, (msg) => {
       const incomingTopic = typeof msg.getDestination === 'function' ? msg.getDestination().getName() : '';
 
-      if (!isMatch(incomingTopic, targetTopic)) {
+      if (!isMatchAny(incomingTopic, targetTopics)) {
         return;
       }
 
       setDataRef.current(msg);
     });
 
-    activeSubscriptionRef.current = targetTopic;
+    activeSubscriptionRef.current = targetKey;
   };
 
   useEffect(() => {
-    if (isConnected && activeSubscriptionRef.current !== topic) {
-      subscribeToTopic(topic);
+    if (isConnected && activeSubscriptionRef.current !== topicKey) {
+      subscribeToTopics(topics);
     }
-  }, [topic, isConnected]);
+    // topicKey captures the meaningful change; topics is derived from it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [topicKey, isConnected]);
+
+  function isMatchAny(incoming: string, filters: string[]): boolean {
+    return filters.some((f) => isMatch(incoming, f));
+  }
 
   function isMatch(incoming: string, filter: string): boolean {
     if (filter === "*" || filter.includes(">")) return true;

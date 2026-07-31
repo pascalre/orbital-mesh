@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Satellite } from './Satellite';
 
 interface SatelliteManagerProps {
-  filterTopic: string;
+  filterTopics: string[];
   solaceData: any;
   isConnected: boolean;
   onHoverSatellite: (data: any) => void;
@@ -11,7 +11,7 @@ interface SatelliteManagerProps {
 }
 
 export function SatelliteManager({
-  filterTopic,
+  filterTopics,
   solaceData,
   isConnected,
   onHoverSatellite,
@@ -20,12 +20,13 @@ export function SatelliteManager({
 }: SatelliteManagerProps) {
   const [satelliteMap, setSatelliteMap] = useState<Record<string, any>>({});
   const lastFilterChange = useRef(Date.now());
+  const filterKey = filterTopics.join('|');
 
   useEffect(() => {
     setSatelliteMap({});
     onHoverSatellite(null);
     lastFilterChange.current = Date.now();
-  }, [filterTopic]);
+  }, [filterKey]);
 
   useEffect(() => {
     if (onCountChange) {
@@ -51,7 +52,7 @@ export function SatelliteManager({
       const incomingTopic = typeof solaceData.getDestination === 'function'
         ? solaceData.getDestination().getName()
         : '';
-      if (!isTopicMatch(incomingTopic, filterTopic)) {
+      if (!filterTopics.some((f) => isTopicMatch(incomingTopic, f))) {
         return;
       }
 
@@ -68,17 +69,20 @@ export function SatelliteManager({
     } catch (e) {
       console.error("SatelliteManager Sync Error:", e);
     }
-  }, [solaceData, filterTopic]);
+  }, [solaceData, filterKey]);
 
+  // Level-by-level match with '*' (single level) and '>' (multi-level tail),
+  // matching the broker's semantics and useSolace's client-side filter.
   function isTopicMatch(incoming: string, filter: string): boolean {
     if (filter === "*" || filter.includes(">")) return true;
-    const filterParts = filter.split('/');
-    const noradPart = filterParts[filterParts.length - 1];
-    const providerPart = filterParts[filterParts.length - 2];
 
-    if (noradPart !== "*" && !incoming.endsWith(noradPart)) return false;
-    if (providerPart !== "*" && !incoming.includes(providerPart)) return false;
+    const iParts = incoming.split('/');
+    const fParts = filter.split('/');
+    if (iParts.length !== fParts.length) return false;
 
+    for (let i = 0; i < fParts.length; i++) {
+      if (fParts[i] !== "*" && fParts[i] !== iParts[i]) return false;
+    }
     return true;
   }
 

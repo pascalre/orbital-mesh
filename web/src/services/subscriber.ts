@@ -15,6 +15,7 @@ export class SolaceSubscriber {
 
   private msgCount = 0;
   private currentRate = 0;
+  private activeTopics = new Set<string>();
 
   constructor() {
     this.factory = solace.SolclientFactory;
@@ -68,27 +69,47 @@ export class SolaceSubscriber {
   }
 
   public subscribe(topicName: string, onMessage: (payload: any) => void): void {
+    this.subscribeMany([topicName], onMessage);
+  }
+
+  /**
+   * Subscribe to several topics at once, all feeding a single shared callback.
+   * Used for region filtering, where a region maps to a set of grid-cell topics.
+   */
+  public subscribeMany(topicNames: string[], onMessage: (payload: any) => void): void {
     if (!this.session) return;
     this.messageCallback = onMessage;
 
-    const topic = this.factory.createTopicDestination(topicName);
-    try {
-      this.session.subscribe(topic, true, topicName, 10000);
-      console.log(`📡 Broker-Side Subscribe: ${topicName}`);
-    } catch (error) {
-      console.error("Subscription error:", error);
+    for (const topicName of topicNames) {
+      if (this.activeTopics.has(topicName)) continue;
+      try {
+        const topic = this.factory.createTopicDestination(topicName);
+        this.session.subscribe(topic, true, topicName, 10000);
+        this.activeTopics.add(topicName);
+        console.log(`📡 Broker-Side Subscribe: ${topicName}`);
+      } catch (error) {
+        console.error("Subscription error:", error);
+      }
     }
   }
 
   public unsubscribe(topicName: string) {
-    if (this.session) {
-      try {
-        const topic = this.factory.createTopicDestination(topicName);
-        this.session.unsubscribe(topic, true, topicName, 10000);
-        console.log(`[Solace] Unsubscribe: ${topicName}`);
-      } catch (error) {
-        console.error("Unsubscribe failed:", error);
-      }
+    if (!this.session) return;
+    if (!this.activeTopics.has(topicName)) return;
+    try {
+      const topic = this.factory.createTopicDestination(topicName);
+      this.session.unsubscribe(topic, true, topicName, 10000);
+      this.activeTopics.delete(topicName);
+      console.log(`[Solace] Unsubscribe: ${topicName}`);
+    } catch (error) {
+      console.error("Unsubscribe failed:", error);
+    }
+  }
+
+  /** Unsubscribe from every currently active topic. */
+  public unsubscribeAll() {
+    for (const topicName of [...this.activeTopics]) {
+      this.unsubscribe(topicName);
     }
   }
 
