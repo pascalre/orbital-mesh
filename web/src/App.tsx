@@ -11,8 +11,10 @@ import { Moon } from "./components/Moon";
 import { Atmosphere } from "./components/Atmosphere";
 import { SatelliteManager } from "./components/SatelliteManager";
 import { SatelliteTooltip } from "./components/SatelliteTooltip";
+import { MobileMenu } from "./components/MobileMenu";
 import { getSunDirection } from "./utils/astronomy";
 import { useSolace } from "./hooks/useSolace";
+import { useIsMobile } from "./hooks/useIsMobile";
 
 function World({ children }: { children: React.ReactNode }) {
   const worldRef = useRef<THREE.Group>(null);
@@ -39,6 +41,7 @@ function App() {
   const [sunDirection] = useState(() => getSunDirection());
   const { data, isConnected, msgRate } = useSolace(activeTopic);
   const [satelliteCount, setSatelliteCount] = useState(0);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     if (!data || !activeHoverData) return;
@@ -68,16 +71,26 @@ function App() {
     }
   }, [data]);
 
+  const controlPanel = (
+    <ControlPanel
+      satelliteCount={satelliteCount}
+      onFilterChange={setActiveTopic}
+      msgRate={msgRate}
+      isConnected={isConnected}
+      solaceData={data}
+      mobile={isMobile}
+    />
+  );
+  const infoPanel = <InfoPanel mobile={isMobile} />;
+
   return (
-    <div style={{ width: '100vw', height: '100vh', position: 'relative' }}>
-      <ControlPanel
-        satelliteCount={satelliteCount}
-        onFilterChange={setActiveTopic}
-        msgRate={msgRate}
-        isConnected={isConnected}
-        solaceData={data}
-      />
-      <InfoPanel />
+    <div style={{ width: '100vw', height: '100dvh', position: 'relative', overflow: 'hidden' }}>
+      {!isMobile && (
+        <>
+          {controlPanel}
+          {infoPanel}
+        </>
+      )}
       <Canvas
         camera={{ position: [0, 0.1, 5] }}
         gl={{
@@ -103,6 +116,7 @@ function App() {
             isConnected={isConnected}
             onHoverSatellite={setActiveHoverData}
             onCountChange={setSatelliteCount}
+            isMobile={isMobile}
           />
         </World>
         <Suspense fallback={null}>
@@ -131,8 +145,12 @@ function App() {
           visible={!!activeHoverData}
           x={activeHoverData?.x}
           y={activeHoverData?.y}
+          mobile={isMobile}
+          onClose={() => setActiveHoverData(null)}
         />
       )}
+
+      {isMobile && <MobileMenu info={infoPanel} controls={controlPanel} />}
     </div>
   );
 }

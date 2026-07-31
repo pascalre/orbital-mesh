@@ -7,6 +7,7 @@ interface SatelliteManagerProps {
   isConnected: boolean;
   onHoverSatellite: (data: any) => void;
   onCountChange?: (count: number) => void;
+  isMobile?: boolean;
 }
 
 export function SatelliteManager({
@@ -14,7 +15,8 @@ export function SatelliteManager({
   solaceData,
   isConnected,
   onHoverSatellite,
-  onCountChange
+  onCountChange,
+  isMobile = false
 }: SatelliteManagerProps) {
   const [satelliteMap, setSatelliteMap] = useState<Record<string, any>>({});
   const lastFilterChange = useRef(Date.now());
@@ -99,6 +101,8 @@ export function SatelliteManager({
             document.body.style.cursor = 'pointer';
           }}
           onPointerMove={(e) => {
+            // On touch, don't chase the finger — keep the pinned card stable.
+            if (isMobile) return;
             onHoverSatellite({
               ...satData,
               x: e.clientX,
@@ -106,6 +110,8 @@ export function SatelliteManager({
             });
           }}
           onPointerOut={() => {
+            // On touch there's no real "out"; the tooltip's close button dismisses it.
+            if (isMobile) return;
             onHoverSatellite(null);
             document.body.style.cursor = 'auto';
           }}
