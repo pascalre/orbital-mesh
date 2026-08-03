@@ -7,4 +7,4 @@ require (
 	solace.dev/go/messaging v1.10.1
 )
 
-require github.com/akhenakh/sgp4 v0.0.0-20260314155803-8ee03fc877eb
+require github.com/akhenakh/sgp4 v1.0.1
