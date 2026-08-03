@@ -59,13 +59,24 @@ func (e *Emitter) GetSatellites() {
 
 func (e *Emitter) EmitCoordinates() {
 	for _, sat := range e.satelliteCache {
-		topic := fmt.Sprintf("earth/sat/tracked/%s/%s/%d", sat.orbit.toString(), strings.ToLower(sat.getProvider()), sat.meta.SatelliteNumber)
-
 		coordinates, err := getGeodeticCoordinates(sat.meta)
 		if err != nil {
 			log.Printf("Skipping sat %d: %v", sat.meta.SatelliteNumber, err)
 			continue
 		}
+
+		// Topic carries the ground position as fixed-degree grid cells so
+		// subscribers can filter by geographic region:
+		//   earth/sat/tracked/{orbit}/{provider}/{noradId}/{latCell}/{lngCell}
+		topic := fmt.Sprintf(
+			"earth/sat/tracked/%s/%s/%d/%d/%d",
+			sat.orbit.toString(),
+			strings.ToLower(sat.getProvider()),
+			sat.meta.SatelliteNumber,
+			LatCell(coordinates.Latitude),
+			LngCell(coordinates.Longitude),
+		)
+
 		message := buildMessage(sat, coordinates)
 
 		e.solaceClient.PublishDirectMessage(topic, message)

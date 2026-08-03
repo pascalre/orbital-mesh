@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { useMemo } from 'react';
 import { useState, useEffect } from 'react';
+import { REGIONS, getRegion, cellsForRegion } from '../utils/geoGrid';
 
 const ORBIT_OPTIONS = ["*", "leo", "geo", "sso", "meo", "heo", "molniya", "po"];
 const PROVIDER_OPTIONS = ["*", "centispace", "cosmo", "ermis", "femto", "glonass", "gps", "hades", "hawk", "hulianwang", "iss", "irnss", "jack", "jilin", "kuiper", "lpntsat", "oneweb", "optisat", "parus", "progress", "qianfan", "rassvet", "shiyan", "spoqc", "starlink", "strix", "superview", "ten", "transporter", "xinzhengcheng"];
@@ -14,7 +15,10 @@ interface EventLog {
   longitude?: number;
 }
 interface ControlPanelProps {
-  onFilterChange: (topic: string) => void;
+  /** Emits the full set of broker topics to subscribe to (one per grid cell when a region is chosen). */
+  onFilterChange: (topics: string[]) => void;
+  /** Raises the selected region key so the 3D grid overlay can be drawn. */
+  onRegionChange?: (regionKey: string) => void;
   satelliteCount: number;
   msgRate: number;
   isConnected: boolean;
@@ -23,19 +27,21 @@ interface ControlPanelProps {
   mobile?: boolean;
 }
 
-export function ControlPanel({ onFilterChange, satelliteCount, msgRate, isConnected, solaceData, mobile = false }: ControlPanelProps) {
+export function ControlPanel({ onFilterChange, onRegionChange, satelliteCount, msgRate, isConnected, solaceData, mobile = false }: ControlPanelProps) {
   const [events, setEvents] = useState<EventLog[]>([]);
 
   const [time, setTime] = useState(new Date());
   const [selectedOrbit, setSelectedOrbit] = React.useState("*");
   const [selectedNoradID, setSelectedNoradID] = React.useState("*");
   const [selectedProvider, setSelectedProvider] = React.useState("*");
+  const [selectedRegion, setSelectedRegion] = React.useState("all");
 
   const focusISS = () => {
     setEvents([]);
     setSelectedOrbit("leo");
     setSelectedProvider("iss");
     setSelectedNoradID("25544");
+    setSelectedRegion("all");
   };
 
   const clearFilters = () => {
@@ -43,6 +49,7 @@ export function ControlPanel({ onFilterChange, satelliteCount, msgRate, isConnec
     setSelectedOrbit("*");
     setSelectedProvider("*");
     setSelectedNoradID("*");
+    setSelectedRegion("all");
   };
 
   const getTopicPart = (value: string) => value === "ALL" ? "*" : value;
@@ -81,12 +88,27 @@ export function ControlPanel({ onFilterChange, satelliteCount, msgRate, isConnec
     }
   }, [solaceData]);
 
-  const activeTopic = useMemo(() => {
+  // Build the broker subscription topics. Base filter is orbit/provider/norad;
+  // when a region is selected we fan out to one topic per grid cell it covers.
+  const { activeTopics, displayTopic } = useMemo(() => {
     const orbit = getTopicPart(selectedOrbit);
     const provider = getTopicPart(selectedProvider);
     const noradID = getTopicPart(selectedNoradID);
-    return `earth/sat/tracked/${orbit}/${provider}/${noradID}`;
-  }, [selectedOrbit, selectedProvider, selectedNoradID]);
+    const base = `earth/sat/tracked/${orbit}/${provider}/${noradID}`;
+
+    const region = getRegion(selectedRegion);
+    if (!region || region.key === 'all') {
+      // Match the two trailing geo levels with single-level wildcards.
+      return { activeTopics: [`${base}/*/*`], displayTopic: `${base}/*/*` };
+    }
+
+    const cells = cellsForRegion(region);
+    const topics = cells.map((c) => `${base}/${c.latIdx}/${c.lngIdx}`);
+    return {
+      activeTopics: topics,
+      displayTopic: `${base}/${region.key} (${cells.length} cells)`,
+    };
+  }, [selectedOrbit, selectedProvider, selectedNoradID, selectedRegion]);
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
@@ -94,8 +116,12 @@ export function ControlPanel({ onFilterChange, satelliteCount, msgRate, isConnec
   }, []);
 
   React.useEffect(() => {
-    onFilterChange(activeTopic);
-  }, [activeTopic, onFilterChange]);
+    onFilterChange(activeTopics);
+  }, [activeTopics, onFilterChange]);
+
+  React.useEffect(() => {
+    onRegionChange?.(selectedRegion);
+  }, [selectedRegion, onRegionChange]);
 
   const filterGroupStyle: React.CSSProperties = {
     display: 'flex',
@@ -206,6 +232,20 @@ export function ControlPanel({ onFilterChange, satelliteCount, msgRate, isConnec
           />
         </div>
       </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', marginTop: '12px' }}>
+        <span style={{ fontSize: '0.75rem', marginBottom: '5px', opacity: 0.7 }}>Region (geo grid)</span>
+        <select
+          style={selectStyle}
+          value={selectedRegion}
+          onChange={(e) => setSelectedRegion(e.target.value)}
+        >
+          {REGIONS.map((r) => (
+            <option key={r.key} value={r.key} style={{ color: 'black' }}>{r.label}</option>
+          ))}
+        </select>
+      </div>
+
       <div style={{
         marginTop: '12px',
         display: 'flex',
@@ -283,7 +323,7 @@ export function ControlPanel({ onFilterChange, satelliteCount, msgRate, isConnec
             lineHeight: '1.2',
             fontFamily: 'monospace'
           }}>
-            {activeTopic}
+            {displayTopic}
           </span>
         </div>
 

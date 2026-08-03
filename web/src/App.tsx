@@ -12,6 +12,7 @@ import { Atmosphere } from "./components/Atmosphere";
 import { SatelliteManager } from "./components/SatelliteManager";
 import { SatelliteTooltip } from "./components/SatelliteTooltip";
 import { MobileMenu } from "./components/MobileMenu";
+import { RegionGrid } from "./components/RegionGrid";
 import { getSunDirection } from "./utils/astronomy";
 import { useSolace } from "./hooks/useSolace";
 import { useIsMobile } from "./hooks/useIsMobile";
@@ -36,10 +37,11 @@ function World({ children }: { children: React.ReactNode }) {
 }
 
 function App() {
-  const [activeTopic, setActiveTopic] = useState("earth/sat/tracked/*/*/*");
+  const [activeTopics, setActiveTopics] = useState<string[]>(["earth/sat/tracked/*/*/*/*/*"]);
+  const [regionKey, setRegionKey] = useState("all");
   const [activeHoverData, setActiveHoverData] = useState<any | null>(null);
   const [sunDirection] = useState(() => getSunDirection());
-  const { data, isConnected, msgRate } = useSolace(activeTopic);
+  const { data, isConnected, msgRate } = useSolace(activeTopics);
   const [satelliteCount, setSatelliteCount] = useState(0);
   const isMobile = useIsMobile();
 
@@ -74,7 +76,8 @@ function App() {
   const controlPanel = (
     <ControlPanel
       satelliteCount={satelliteCount}
-      onFilterChange={setActiveTopic}
+      onFilterChange={setActiveTopics}
+      onRegionChange={setRegionKey}
       msgRate={msgRate}
       isConnected={isConnected}
       solaceData={data}
@@ -109,9 +112,10 @@ function App() {
           <Earth sunDirection={sunDirection} />
           <Atmosphere sunDirection={sunDirection} />
           { /* activeHoverData && <OrbitLine data={activeHoverData} /> */}
+          <RegionGrid regionKey={regionKey} />
           <SatelliteManager
-            key={activeTopic}
-            filterTopic={activeTopic}
+            key={activeTopics.join('|')}
+            filterTopics={activeTopics}
             solaceData={data}
             isConnected={isConnected}
             onHoverSatellite={setActiveHoverData}
