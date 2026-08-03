@@ -19,9 +19,11 @@ interface ControlPanelProps {
   msgRate: number;
   isConnected: boolean;
   solaceData: any;
+  /** When true, render content only (no fixed-corner positioning); host sheet handles layout. */
+  mobile?: boolean;
 }
 
-export function ControlPanel({ onFilterChange, satelliteCount, msgRate, isConnected, solaceData }: ControlPanelProps) {
+export function ControlPanel({ onFilterChange, satelliteCount, msgRate, isConnected, solaceData, mobile = false }: ControlPanelProps) {
   const [events, setEvents] = useState<EventLog[]>([]);
 
   const [time, setTime] = useState(new Date());
@@ -133,24 +135,32 @@ export function ControlPanel({ onFilterChange, satelliteCount, msgRate, isConnec
     marginBottom: '6px'
   };
 
+  const desktopContainerStyle: React.CSSProperties = {
+    position: 'absolute',
+    top: '25px',
+    right: '25px',
+    zIndex: 10,
+    color: 'white',
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    padding: '20px 25px',
+    borderRadius: '14px',
+    width: '430px',
+    backdropFilter: 'blur(12px)',
+    border: '1px solid rgba(255, 255, 255, 0.15)',
+    fontFamily: 'sans-serif',
+    boxShadow: '0 12px 40px rgba(0,0,0,0.6)',
+    maxHeight: 'calc(100vh - 100px)',
+    overflowY: 'auto',
+  };
+
+  const mobileContainerStyle: React.CSSProperties = {
+    color: 'white',
+    fontFamily: 'sans-serif',
+    padding: '4px 4px 8px',
+  };
+
   return (
-    <div style={{
-      position: 'absolute',
-      top: '25px',
-      right: '25px',
-      zIndex: 10,
-      color: 'white',
-      backgroundColor: 'rgba(0, 0, 0, 0.8)',
-      padding: '20px 25px',
-      borderRadius: '14px',
-      width: '430px',
-      backdropFilter: 'blur(12px)',
-      border: '1px solid rgba(255, 255, 255, 0.15)',
-      fontFamily: 'sans-serif',
-      boxShadow: '0 12px 40px rgba(0,0,0,0.6)',
-      maxHeight: 'calc(100vh - 100px)',
-      overflowY: 'auto',
-    }}>
+    <div style={mobile ? mobileContainerStyle : desktopContainerStyle}>
 
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', fontFamily: 'monospace' }}>
         <div style={{ fontWeight: 'bold', letterSpacing: '2px', fontSize: '1.6rem' }}>

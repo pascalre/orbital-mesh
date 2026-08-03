@@ -2,7 +2,14 @@ import * as React from 'react';
 import solaceLogo from '../assets/solace.svg';
 import githubLogo from '../assets/github-lockup.svg';
 
-export function InfoPanel() {
+interface InfoPanelProps {
+  /** When true, render content only (no fixed-corner positioning / collapse toggle); host sheet handles layout. */
+  mobile?: boolean;
+}
+
+export function InfoPanel({ mobile = false }: InfoPanelProps = {}) {
+  // On desktop the panel starts open in the corner. On mobile the host sheet
+  // controls visibility, so content is always expanded when mounted.
   const [isExpanded, setIsExpanded] = React.useState(true);
 
   const didYouKnowFacts = [
@@ -28,64 +35,77 @@ export function InfoPanel() {
     color: '#ccc'
   };
 
+  // On mobile the sheet supplies visibility, so treat content as always open.
+  const open = mobile ? true : isExpanded;
+
+  const desktopContainerStyle: React.CSSProperties = {
+    position: 'absolute',
+    top: '25px',
+    left: '25px',
+    zIndex: 10,
+    color: 'white',
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    padding: '20px 25px',
+    borderRadius: '14px',
+    width: open ? '430px' : '160px',
+    transition: 'all 0.4s cubic-bezier(0.175, 1, 0.32, 1)',
+    backdropFilter: 'blur(12px)',
+    border: '1px solid rgba(255, 255, 255, 0.15)',
+    fontFamily: 'sans-serif',
+    boxShadow: '0 12px 40px rgba(0,0,0,0.6)',
+    maxHeight: 'calc(100vh - 100px)',
+    overflow: 'hidden',
+  };
+
+  const mobileContainerStyle: React.CSSProperties = {
+    color: 'white',
+    fontFamily: 'sans-serif',
+    padding: '4px 4px 8px',
+  };
+
   return (
-    <div style={{
-      position: 'absolute',
-      top: '25px',
-      left: '25px',
-      zIndex: 10,
-      color: 'white',
-      backgroundColor: 'rgba(0, 0, 0, 0.8)',
-      padding: isExpanded ? '20px 25px' : '20px 25px',
-      borderRadius: '14px',
-      width: isExpanded ? '430px' : '160px',
-      transition: 'all 0.4s cubic-bezier(0.175, 1, 0.32, 1)',
-      backdropFilter: 'blur(12px)',
-      border: '1px solid rgba(255, 255, 255, 0.15)',
-      fontFamily: 'sans-serif',
-      boxShadow: '0 12px 40px rgba(0,0,0,0.6)',
-      maxHeight: 'calc(100vh - 100px)',
-      overflow: 'hidden',
-    }}>
+    <div style={mobile ? mobileContainerStyle : desktopContainerStyle}>
 
       <div style={{
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: isExpanded ? '16px' : '0px',
+        marginBottom: open ? '16px' : '0px',
         transition: 'margin 0.4s'
       }}>
         <img
           src={solaceLogo}
-          width={isExpanded ? "125px" : "80px"}
+          width={open ? "125px" : "80px"}
           alt="Solace Logo"
           style={{ transition: 'width 0.4s' }}
         />
 
-        <button
-          onClick={() => setIsExpanded(!isExpanded)}
-          style={{
-            background: 'rgba(255, 255, 255, 0.1)',
-            border: 'none',
-            color: '#00c897',
-            cursor: 'pointer',
-            borderRadius: '6px',
-            padding: '6px 10px',
-            fontSize: '0.7rem',
-            fontWeight: 'bold',
-            transition: 'background 0.2s',
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)')}
-          onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)')}
-        >
-          {isExpanded ? 'CLOSE' : 'INFO'}
-        </button>
+        {!mobile && (
+          <button
+            onClick={() => setIsExpanded(!isExpanded)}
+            style={{
+              background: 'rgba(255, 255, 255, 0.1)',
+              border: 'none',
+              color: '#00c897',
+              cursor: 'pointer',
+              borderRadius: '6px',
+              padding: '6px 10px',
+              fontSize: '0.7rem',
+              fontWeight: 'bold',
+              transition: 'background 0.2s',
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)')}
+            onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)')}
+          >
+            {isExpanded ? 'CLOSE' : 'INFO'}
+          </button>
+        )}
       </div>
 
       <div style={{
-        opacity: isExpanded ? 1 : 0,
+        opacity: open ? 1 : 0,
         transition: 'opacity 0.3s ease-in-out',
-        display: isExpanded ? 'block' : 'none'
+        display: open ? 'block' : 'none'
       }}>
         <h2 style={{ ...sectionHeaderStyle, marginTop: 0 }}>ORBITAL MESH</h2>
         <p style={{ fontSize: '0.85rem', opacity: 0.9, lineHeight: '1.5', marginBottom: '12px' }}>
