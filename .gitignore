@@ -28,3 +28,4 @@ services/bin
 web/.env
 
 *.tar
+deploy/docker/.env

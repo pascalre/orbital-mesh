@@ -12,9 +12,16 @@ COPY . .
 RUN CGO_ENABLED=1 GOOS=linux go build -o main ./cmd/orbital-emitter
 
 FROM debian:bookworm-slim
-RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/* \
+    && useradd --system --uid 10001 --no-create-home emitter \
+    && mkdir /data && chown emitter /data
 
-WORKDIR /root/
+WORKDIR /app
 COPY --from=build /app/main .
+
+USER 10001
+ENV CACHE_DIR=/data
+VOLUME /data
+EXPOSE 8080
 
 CMD ["./main"]

@@ -4,16 +4,24 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"orbital_emitter/internal/platform"
 	"strconv"
 	"strings"
+	"sync/atomic"
 
 	"github.com/akhenakh/sgp4"
 )
 
+// Publisher sends one message to a topic. platform.SolaceClient implements it.
+type Publisher interface {
+	PublishDirectMessage(topic string, messageBody string) error
+}
+
 type Emitter struct {
-	satelliteCache []Satellite
-	solaceClient   *platform.SolaceClient
+	// The catalog is swapped as a whole when a new snapshot arrives, so the
+	// 1 Hz emit loop and the background refresh never need a lock.
+	satellites atomic.Pointer[[]Satellite]
+	publisher  Publisher
+	group      string
 }
 
 type Satellite struct {
@@ -23,6 +31,10 @@ type Satellite struct {
 }
 
 const unknown = "UNKNOWN"
+
+// After this many consecutive publish errors a tick is abandoned: the broker
+// is obviously not reachable and trying the remaining satellites is pointless.
+const maxConsecutivePublishErrors = 10
 
 func (s Satellite) getProvider() string {
 	i := strings.IndexAny(s.meta.Name, " -")
@@ -36,32 +48,49 @@ func (s Satellite) getProvider() string {
 	return s.meta.Name
 }
 
-func NewEmitter(client *platform.SolaceClient) *Emitter {
-	return &Emitter{
-		satelliteCache: []Satellite{},
-		solaceClient:   client,
-	}
+func NewEmitter(publisher Publisher, group string) *Emitter {
+	return &Emitter{publisher: publisher, group: group}
 }
 
-func (e *Emitter) GetSatellites() {
-	provider := "ACTIVE"
-	satellites := platform.GetSatellitesForGroupAsTLE(provider)
+// SetCatalog replaces the satellite catalog with the given TLE entries
+// (3 lines each). Entries that cannot be parsed are skipped, never fatal.
+func (e *Emitter) SetCatalog(tleEntries []string) {
+	satellites := make([]Satellite, 0, len(tleEntries))
+	skipped := 0
 
-	for _, sat := range satellites {
-		tle := parseTLE(sat)
-		e.satelliteCache = append(e.satelliteCache, Satellite{
-			provider: provider,
+	for _, entry := range tleEntries {
+		tle, err := parseTLE(entry)
+		if err != nil {
+			skipped++
+			continue
+		}
+		satellites = append(satellites, Satellite{
+			provider: e.group,
 			orbit:    GetOrbit(tle.MeanMotion, tle.Eccentricity, tle.Inclination),
 			meta:     tle,
 		})
 	}
+
+	e.satellites.Store(&satellites)
+	log.Printf("Satellite catalog updated: %d satellites (%d unparsable entries skipped)", len(satellites), skipped)
 }
 
-func (e *Emitter) EmitCoordinates() {
-	for _, sat := range e.satelliteCache {
+// EmitCoordinates publishes the current position of every satellite. It never
+// panics or exits: problems are reported through the returned error.
+func (e *Emitter) EmitCoordinates() error {
+	catalog := e.satellites.Load()
+	if catalog == nil {
+		return nil
+	}
+
+	var published, failed, consecutive int
+	var firstErr error
+
+	for _, sat := range *catalog {
 		coordinates, err := getGeodeticCoordinates(sat.meta)
 		if err != nil {
-			log.Printf("Skipping sat %d: %v", sat.meta.SatelliteNumber, err)
+			// Decayed or otherwise unpropagatable satellite: skip it quietly,
+			// the next catalog refresh will most likely drop it.
 			continue
 		}
 
@@ -77,10 +106,26 @@ func (e *Emitter) EmitCoordinates() {
 			LngCell(coordinates.Longitude),
 		)
 
-		message := buildMessage(sat, coordinates)
-
-		e.solaceClient.PublishDirectMessage(topic, message)
+		if err := e.publisher.PublishDirectMessage(topic, buildMessage(sat, coordinates)); err != nil {
+			failed++
+			consecutive++
+			if firstErr == nil {
+				firstErr = err
+			}
+			if consecutive >= maxConsecutivePublishErrors {
+				return fmt.Errorf("giving up this tick after %d consecutive publish errors (%d published, first error: %w)",
+					consecutive, published, firstErr)
+			}
+			continue
+		}
+		consecutive = 0
+		published++
 	}
+
+	if failed > 0 {
+		return fmt.Errorf("%d of %d publishes failed, first error: %w", failed, published+failed, firstErr)
+	}
+	return nil
 }
 
 func buildMessage(sat Satellite, coordinates GeodeticCoordinates) string {
@@ -106,18 +151,19 @@ type GeodeticCoordinates struct {
 }
 
 func GetLaunchYear(designator string) int {
-	yearPartStr := designator[:2]
-	yearPart, _ := strconv.Atoi(yearPartStr)
+	if len(designator) < 2 {
+		return 0
+	}
+	yearPart, err := strconv.Atoi(designator[:2])
+	if err != nil {
+		return 0
+	}
 
 	// TLE logic:
 	// years 58-99 -> 1950s to 1990s
 	// years 00-57 -> 2000s to 2057
-	var fullYear int
 	if yearPart >= 58 {
-		fullYear = 1900 + yearPart
-	} else {
-		fullYear = 2000 + yearPart
+		return 1900 + yearPart
 	}
-
-	return fullYear
+	return 2000 + yearPart
 }

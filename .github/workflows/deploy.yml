@@ -35,7 +35,7 @@ jobs:
             VITE_SOLACE_URL=${{ secrets.SOLACE_URL }}
             VITE_SOLACE_VPN=${{ secrets.SOLACE_VPN }}
             VITE_SOLACE_USER=${{ secrets.SOLACE_USER }}
-            VITE_SOLACE_PASSWORD=${{ secrets.SOLACE_PASSWORD }}
+            VITE_SOLACE_PASS=${{ secrets.SOLACE_PASSWORD }}
 
       - name: Build and push Orbital Emitter
         uses: docker/build-push-action@v5

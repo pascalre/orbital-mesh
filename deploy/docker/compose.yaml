@@ -1,0 +1,46 @@
+# Emitter on a plain Docker host: persistent cache + automatic updates.
+#
+# One-time setup on the server:
+#   1. Make the GHCR package public (GitHub -> Packages -> orbital-emitter ->
+#      Package settings -> Change visibility), so no docker login is needed.
+#   2. cp .env.example .env     # fill in the Solace credentials
+#   3. docker compose up -d
+#
+# From then on: push to master -> GitHub Actions builds and pushes the image ->
+# Watchtower notices the new image within ~5 minutes and recreates the emitter.
+# The named volume keeps the CelesTrak cache across restarts and updates, so
+# neither crashes nor updates trigger a new CelesTrak download.
+# `docker compose down -v` deletes the volume - don't do that casually.
+services:
+  orbital-emitter:
+    image: ghcr.io/pascalre/orbital-mesh/orbital-emitter:latest
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      CACHE_DIR: /data
+      CELESTRAK_GROUP: ACTIVE
+      CATALOG_REFRESH_INTERVAL: 24h   # once a day
+      CATALOG_RETRY_BASE: 1h          # min wait after a failed download
+    volumes:
+      - emitter-cache:/data
+    labels:
+      - com.centurylink.watchtower.enable=true
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+
+  watchtower:
+    # NOTE: the original containrrr/watchtower is no longer maintained and
+    # fails against recent Docker versions; this is a maintained fork.
+    # Verify the image name before first use.
+    image: nickfedor/watchtower:latest
+    restart: unless-stopped
+    environment:
+      WATCHTOWER_LABEL_ENABLE: "true"      # only touch containers with the label above
+      WATCHTOWER_POLL_INTERVAL: "300"      # seconds
+      WATCHTOWER_CLEANUP: "true"           # remove old images
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+volumes:
+  emitter-cache:

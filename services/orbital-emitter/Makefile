@@ -16,7 +16,7 @@ lint:
 	golangci-lint run
 
 docker-build:
-	docker build -t $(DOCKER_IMAGE):latest -f deployments/Dockerfile .
+	docker build -t $(DOCKER_IMAGE):latest .
 
 tidy:
 	go mod tidy
