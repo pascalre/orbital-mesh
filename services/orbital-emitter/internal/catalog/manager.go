@@ -13,15 +13,24 @@
 //     doubling, capped at RetryMax). While waiting, the last good snapshot
 //     stays in use.
 //   - A downloaded payload only replaces the cache if it looks sane.
+//   - Any response other than HTTP 200 (see ErrHalt) stops all further
+//     requests until a human has looked at it - CelesTrak's usage policy
+//     requires this, and ignoring it gets the IP firewalled.
 package catalog
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"sync"
 	"time"
 )
+
+// ErrHalt must be wrapped by a FetchFunc when the server answered with an
+// HTTP status other than 200. The manager then stops querying altogether and
+// persists that decision, so it survives restarts.
+var ErrHalt = errors.New("CelesTrak answered with a non-200 response")
 
 // FetchFunc downloads the raw TLE export for a CelesTrak group.
 type FetchFunc func(ctx context.Context, group string) (string, error)
@@ -29,7 +38,7 @@ type FetchFunc func(ctx context.Context, group string) (string, error)
 type Config struct {
 	Group           string
 	RefreshInterval time.Duration // how old a snapshot may get before a refresh (default 24h)
-	RetryBase       time.Duration // minimum wait after a failed attempt (default 1h)
+	RetryBase       time.Duration // minimum wait after a failed attempt (default 2h)
 	RetryMax        time.Duration // upper bound for the backoff (default 12h)
 	FetchTimeout    time.Duration // per-request timeout (default 60s)
 }
@@ -39,7 +48,7 @@ func (c *Config) applyDefaults() {
 		c.RefreshInterval = 24 * time.Hour
 	}
 	if c.RetryBase <= 0 {
-		c.RetryBase = time.Hour
+		c.RetryBase = 2 * time.Hour
 	}
 	if c.RetryMax <= 0 {
 		c.RetryMax = 12 * time.Hour
@@ -133,6 +142,10 @@ func (m *Manager) RefreshIfDue(ctx context.Context) (Snapshot, bool, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
+	if m.state.Halted {
+		return m.currentLocked(), false, nil
+	}
+
 	now := m.now()
 	if now.Before(m.nextAttemptLocked()) {
 		return m.currentLocked(), false, nil
@@ -145,6 +158,13 @@ func (m *Manager) RefreshIfDue(ctx context.Context) (Snapshot, bool, error) {
 	raw, err := m.download(ctx)
 	if err == nil {
 		err = validate(raw, m.snap)
+	}
+	if errors.Is(err, ErrHalt) {
+		m.state.LastError = err.Error()
+		m.state.Halted = true
+		m.state.HaltReason = fmt.Sprintf("%v (at %s)", err, now.Format(time.RFC3339))
+		m.persistState()
+		return m.currentLocked(), false, fmt.Errorf("HALTED - no further CelesTrak requests until a human intervenes: %w", err)
 	}
 	if err != nil {
 		m.state.LastError = err.Error()
@@ -177,17 +197,58 @@ func (m *Manager) currentLocked() Snapshot {
 	return *m.snap
 }
 
+// Halted tells whether requests are stopped, and why.
+func (m *Manager) Halted() (bool, string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.state.Halted, m.state.HaltReason
+}
+
+// reloadHaltState picks up a human having cleared the halt (by deleting the
+// state file) without needing a restart.
+func (m *Manager) reloadHaltState() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	st, err := m.store.LoadState()
+	if err == nil && !st.Halted {
+		m.state = st
+		log.Printf("catalog: halt cleared, CelesTrak requests resume")
+	}
+}
+
 func (m *Manager) persistState() {
 	if err := m.store.SaveState(m.state); err != nil {
 		log.Printf("catalog: WARNING could not persist fetch state: %v", err)
 	}
 }
 
+const (
+	haltPollInterval = time.Minute
+	haltLogInterval  = time.Hour
+)
+
 // Run blocks until ctx is cancelled and keeps the catalog fresh, calling
-// onUpdate for every new snapshot. Failures are logged and retried according
-// to the backoff; they never terminate the loop.
+// onUpdate for every new snapshot. Network failures are logged and retried
+// according to the backoff; a non-200 response halts the loop's requests (but
+// it keeps running, so clearing the halt takes effect without a restart).
 func (m *Manager) Run(ctx context.Context, onUpdate func(Snapshot)) {
+	var lastHaltLog time.Time
 	for {
+		if halted, reason := m.Halted(); halted {
+			if time.Since(lastHaltLog) >= haltLogInterval {
+				log.Printf("catalog: HALTED, not contacting CelesTrak. Reason: %s. "+
+					"Find and fix the cause, then delete %s to resume.", reason, m.store.statePath())
+				lastHaltLog = time.Now()
+			}
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(haltPollInterval):
+			}
+			m.reloadHaltState()
+			continue
+		}
+
 		wait := time.Until(m.NextAttempt())
 		if wait > 0 {
 			log.Printf("catalog: next CelesTrak refresh in %s", wait.Round(time.Second))

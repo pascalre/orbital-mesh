@@ -24,6 +24,11 @@ type State struct {
 	LastAttempt time.Time `json:"lastAttempt"`
 	Failures    int       `json:"failures"`
 	LastError   string    `json:"lastError,omitempty"`
+
+	// Halted is set when CelesTrak answered with anything but HTTP 200. No
+	// further requests are made until a human removes the state file.
+	Halted     bool   `json:"halted,omitempty"`
+	HaltReason string `json:"haltReason,omitempty"`
 }
 
 var groupPattern = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)

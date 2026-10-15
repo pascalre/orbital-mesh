@@ -3,6 +3,7 @@ package catalog
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -48,7 +49,7 @@ func (e *env) manager(t *testing.T, f *fakeFetcher) *Manager {
 	if err != nil {
 		t.Fatal(err)
 	}
-	m := NewManager(Config{Group: "ACTIVE"}, store, f.fetch)
+	m := NewManager(Config{Group: "ACTIVE", RetryBase: time.Hour}, store, f.fetch)
 	m.now = func() time.Time { return e.now }
 	m.LoadCached()
 	return m
@@ -253,11 +254,72 @@ func TestInvalidGroupIsRejected(t *testing.T) {
 
 func TestBackoffIsCapped(t *testing.T) {
 	t.Parallel()
-	m := NewManager(Config{Group: "ACTIVE"}, nil, nil)
+	m := NewManager(Config{Group: "ACTIVE", RetryBase: time.Hour}, nil, nil)
 	if got := m.backoff(1); got != time.Hour {
 		t.Errorf("backoff(1) = %v", got)
 	}
 	if got := m.backoff(100); got != 12*time.Hour {
 		t.Errorf("backoff(100) = %v", got)
+	}
+}
+
+func TestNon200HaltsForeverAcrossRestarts(t *testing.T) {
+	t.Parallel()
+	e, f := newEnv(), &fakeFetcher{data: sampleTLE}
+	if _, _, err := e.manager(t, f).RefreshIfDue(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+
+	e.now = e.now.Add(25 * time.Hour)
+	f.err = fmt.Errorf("%w: HTTP 403", ErrHalt)
+	m := e.manager(t, f)
+	snap, updated, err := m.RefreshIfDue(context.Background())
+	if err == nil || updated || !strings.Contains(snap.TLE, "ISS") {
+		t.Fatalf("want error and old snapshot, got updated=%v err=%v", updated, err)
+	}
+	if halted, reason := m.Halted(); !halted || !strings.Contains(reason, "403") {
+		t.Fatalf("halted=%v reason=%q", halted, reason)
+	}
+	calls := f.calls
+
+	// Neither time nor restarts may cause another request.
+	for i := 0; i < 10; i++ {
+		e.now = e.now.Add(48 * time.Hour)
+		if _, _, err := e.manager(t, f).RefreshIfDue(context.Background()); err != nil {
+			t.Fatalf("halted manager must be silent, got %v", err)
+		}
+	}
+	if f.calls != calls {
+		t.Fatalf("%d requests after halt, want 0", f.calls-calls)
+	}
+
+	// A human removes the state file: requests resume.
+	if err := os.Remove(filepath.Join(e.dir, "ACTIVE.state.json")); err != nil {
+		t.Fatal(err)
+	}
+	f.err = nil
+	if _, updated, err := e.manager(t, f).RefreshIfDue(context.Background()); !updated || err != nil {
+		t.Fatalf("resume failed: updated=%v err=%v", updated, err)
+	}
+}
+
+func TestReloadHaltStatePicksUpClearedHalt(t *testing.T) {
+	t.Parallel()
+	e, f := newEnv(), &fakeFetcher{err: fmt.Errorf("%w: HTTP 503", ErrHalt)}
+	m := e.manager(t, f)
+	_, _, _ = m.RefreshIfDue(context.Background())
+	if halted, _ := m.Halted(); !halted {
+		t.Fatal("expected halt")
+	}
+	m.reloadHaltState() // state file still says halted
+	if halted, _ := m.Halted(); !halted {
+		t.Fatal("halt must stay while the state file says so")
+	}
+	if err := os.Remove(filepath.Join(e.dir, "ACTIVE.state.json")); err != nil {
+		t.Fatal(err)
+	}
+	m.reloadHaltState()
+	if halted, _ := m.Halted(); halted {
+		t.Fatal("halt must be cleared after the state file is removed")
 	}
 }

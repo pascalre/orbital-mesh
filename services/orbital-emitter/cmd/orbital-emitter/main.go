@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"orbital_emitter/internal/catalog"
+	"orbital_emitter/internal/celestrak"
 	"orbital_emitter/internal/emitter"
 	"orbital_emitter/internal/engine"
 	"orbital_emitter/internal/health"
@@ -29,9 +30,9 @@ func main() {
 	catalogManager := catalog.NewManager(catalog.Config{
 		Group:           group,
 		RefreshInterval: envDuration("CATALOG_REFRESH_INTERVAL", 24*time.Hour),
-		RetryBase:       envDuration("CATALOG_RETRY_BASE", time.Hour),
+		RetryBase:       envDuration("CATALOG_RETRY_BASE", 2*time.Hour),
 		RetryMax:        envDuration("CATALOG_RETRY_MAX", 12*time.Hour),
-	}, store, platform.FetchGroupTLE)
+	}, store, celestrak.FetchGroupTLE)
 
 	status := health.New(30 * time.Second)
 	go status.Serve(ctx, envOr("HEALTH_ADDR", ":8080"))
