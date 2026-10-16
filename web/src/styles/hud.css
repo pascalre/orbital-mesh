@@ -580,6 +580,20 @@
   word-break: break-all;
 }
 
+.hud-sub-count {
+  margin: 0 0 8px;
+  font-family: var(--font-data);
+  font-size: 0.72rem;
+  color: var(--hud-text-dim);
+}
+
+.hud-code__list {
+  display: flex;
+  flex-direction: column;
+  max-height: 9.5rem;
+  overflow-y: auto;
+}
+
 .hud-notice {
   display: flex;
   gap: 10px;

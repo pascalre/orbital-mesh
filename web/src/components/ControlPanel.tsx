@@ -1,10 +1,8 @@
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { REGIONS, getRegion, cellsForRegion } from '../utils/geoGrid';
 import type { ConnectionStatus } from '../services/subscriber';
 import {
-  IconCheck,
   IconChevronDown,
-  IconCopy,
   IconCrosshair,
   IconReset,
 } from './icons';
@@ -126,7 +124,6 @@ export function ControlPanel({
   const [selectedNoradID, setSelectedNoradID] = useState('*');
   const [selectedProvider, setSelectedProvider] = useState('*');
   const [selectedRegion, setSelectedRegion] = useState('all');
-  const [copied, setCopied] = useState(false);
   const [settled, setSettled] = useState(false);
 
   const isTrackingISS =
@@ -191,7 +188,7 @@ export function ControlPanel({
 
   // Build the broker subscription topics. Base filter is orbit/provider/norad;
   // when a region is selected we fan out to one topic per grid cell it covers.
-  const { activeTopics, displayTopic } = useMemo(() => {
+  const activeTopics = useMemo(() => {
     const orbit = selectedOrbit;
     const provider = selectedProvider;
     const noradID = selectedNoradID;
@@ -200,15 +197,11 @@ export function ControlPanel({
     const region = getRegion(selectedRegion);
     if (!region || region.key === 'all') {
       // Match the two trailing geo levels with single-level wildcards.
-      return { activeTopics: [`${base}/*/*`], displayTopic: `${base}/*/*` };
+      return [`${base}/*/*`];
     }
 
     const cells = cellsForRegion(region);
-    const topics = cells.map((c) => `${base}/${c.latIdx}/${c.lngIdx}`);
-    return {
-      activeTopics: topics,
-      displayTopic: `${base}/${region.key} (${cells.length} cells)`,
-    };
+    return cells.map((c) => `${base}/${c.latIdx}/${c.lngIdx}`);
   }, [selectedOrbit, selectedProvider, selectedNoradID, selectedRegion]);
 
   const topicKey = activeTopics.join('|');
@@ -227,16 +220,6 @@ export function ControlPanel({
     const timer = setTimeout(() => setSettled(true), EMPTY_HINT_DELAY_MS);
     return () => clearTimeout(timer);
   }, [topicKey]);
-
-  const copyTopic = useCallback(async () => {
-    try {
-      await navigator.clipboard.writeText(activeTopics.join('\n'));
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1800);
-    } catch {
-      // Clipboard can be unavailable (insecure context, permissions): stay silent.
-    }
-  }, [activeTopics]);
 
   const showEmptyHint = status === 'live' && settled && satelliteCount === 0;
 
@@ -334,17 +317,17 @@ export function ControlPanel({
       </Section>
 
       <Section title="Subscription">
+        <p className="hud-sub-count">
+          {activeTopics.length === 1
+            ? '1 subscription'
+            : `${activeTopics.length.toLocaleString('en-US')} subscriptions`}
+        </p>
         <div className="hud-code">
-          <code>{displayTopic}</code>
-          <button
-            type="button"
-            className="hud-btn hud-btn--icon hud-btn--ghost"
-            onClick={copyTopic}
-            aria-label={copied ? 'Copied' : 'Copy topic subscription'}
-            title="Copy topic subscription"
-          >
-            {copied ? <IconCheck /> : <IconCopy />}
-          </button>
+          <code className="hud-code__list" tabIndex={0} aria-label="Active topic subscriptions">
+            {activeTopics.map((t) => (
+              <span key={t}>{t}</span>
+            ))}
+          </code>
         </div>
       </Section>
 
