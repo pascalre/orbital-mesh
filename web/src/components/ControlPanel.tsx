@@ -85,7 +85,7 @@ interface SectionProps {
   children: React.ReactNode;
 }
 
-function Section({ title, badge, defaultOpen = true, children }: SectionProps) {
+function Section({ title, badge, defaultOpen = true, children }: Readonly<SectionProps>) {
   return (
     <details className="hud-section" open={defaultOpen}>
       <summary>
@@ -107,7 +107,7 @@ export function ControlPanel({
   autoRotate,
   onAutoRotateChange,
   mobile = false,
-}: ControlPanelProps) {
+}: Readonly<ControlPanelProps>) {
   const ids = {
     orbit: useId(),
     provider: useId(),
@@ -296,9 +296,9 @@ export function ControlPanel({
         </div>
 
         {showEmptyHint && (
-          <div className="hud-notice" role="status">
+          <output className="hud-notice">
             <span>No satellites match these filters right now. Widen the filters or reset them.</span>
-          </div>
+          </output>
         )}
       </Section>
 
@@ -323,7 +323,7 @@ export function ControlPanel({
             : `${activeTopics.length.toLocaleString('en-US')} subscriptions`}
         </p>
         <div className="hud-code">
-          <code className="hud-code__list" tabIndex={0} aria-label="Active topic subscriptions">
+          <code className="hud-code__list" aria-label="Active topic subscriptions">
             {activeTopics.map((t) => (
               <span key={t}>{t}</span>
             ))}
@@ -335,7 +335,7 @@ export function ControlPanel({
         {events.length === 0 ? (
           <p className="hud-empty">
             <span className="hud-dot" aria-hidden="true" />
-            Waiting for orbital telemetry…
+            <span>Waiting for orbital telemetry…</span>
           </p>
         ) : (
           <ol className="hud-feed" aria-label="Latest position events">

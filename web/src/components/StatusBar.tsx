@@ -20,7 +20,7 @@ const LABEL: Record<ConnectionStatus, string> = {
  * Always-visible connection state, top centre. Replaces the status that used to
  * hide inside the controls panel (and was invisible on phones).
  */
-export function StatusBar({ status, error, msgRate, satelliteCount, onRetry }: StatusBarProps) {
+export function StatusBar({ status, error, msgRate, satelliteCount, onRetry }: Readonly<StatusBarProps>) {
   return (
     <div className="hud-statusbar">
       <div className="hud-pill" data-status={status} role="status" aria-live="polite">

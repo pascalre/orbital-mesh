@@ -91,7 +91,7 @@ func getDirectMessagePublisherFor(messagingService solace.MessagingService) (sol
 }
 
 // PublishDirectMessage never panics; a failed publish is returned as an error.
-func (s *SolaceClient) PublishDirectMessage(topic string, messageBody string) error {
+func (s *SolaceClient) PublishDirectMessage(topic, messageBody string) error {
 	message, err := s.messagingService.MessageBuilder().BuildWithStringPayload(messageBody)
 	if err != nil {
 		return fmt.Errorf("build message: %w", err)

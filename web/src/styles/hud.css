@@ -48,8 +48,9 @@
 }
 
 /* Component display rules must not defeat the hidden attribute. */
-[hidden] {
-  display: none !important;
+.hud-sheet[hidden],
+.hud-panel__scroll[hidden] {
+  display: none;
 }
 
 /* --------------------------------------------------------------------------
@@ -74,15 +75,6 @@
   border: 0;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
-}
 
 /* --------------------------------------------------------------------------
    Panels
@@ -539,6 +531,7 @@
   align-items: center;
   gap: 8px;
   transform: translateX(-50%);
+  width: max-content;
   max-width: calc(100vw - 24px);
 }
 
@@ -1002,6 +995,10 @@
   position: fixed;
   left: 0;
   right: 0;
+  width: auto;
+  max-width: none;
+  margin: 0;
+  padding: 0;
   bottom: calc(68px + env(safe-area-inset-bottom, 0px));
   z-index: 1001;
   display: flex;
@@ -1062,5 +1059,17 @@
 @media (max-width: 380px) {
   .hud-fields {
     grid-template-columns: 1fr;
+  }
+}
+
+/* Reduced motion. Kept last, with doubled :root for specificity, so it wins over
+   every component rule above without needing !important. */
+@media (prefers-reduced-motion: reduce) {
+  :root:root *,
+  :root:root *::before,
+  :root:root *::after {
+    animation-duration: 0.01ms;
+    animation-iteration-count: 1;
+    transition-duration: 0.01ms;
   }
 }
