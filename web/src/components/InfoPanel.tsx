@@ -17,10 +17,15 @@ const DID_YOU_KNOW = [
   'The ISS serves as a microgravity research lab at an altitude of about 420 km.',
 ];
 
-export function InfoPanel({ mobile = false }: InfoPanelProps = {}) {
+function pickFact(): string {
+  const [n] = crypto.getRandomValues(new Uint32Array(1));
+  return DID_YOU_KNOW[n % DID_YOU_KNOW.length];
+}
+
+export function InfoPanel({ mobile = false }: Readonly<InfoPanelProps> = {}) {
   const [isExpanded, setIsExpanded] = useState(true);
   const bodyId = useId();
-  const [randomFact] = useState(() => DID_YOU_KNOW[Math.floor(Math.random() * DID_YOU_KNOW.length)]);
+  const [randomFact] = useState(pickFact);
 
   const content = (
     <>

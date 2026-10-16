@@ -8,7 +8,7 @@ interface HintProps {
 const HIDE_AFTER_MS = 12000;
 
 /** One-time interaction hint. Disappears on its own, on first touch/drag, or via the close button. */
-export function Hint({ mobile }: HintProps) {
+export function Hint({ mobile }: Readonly<HintProps>) {
   const [visible, setVisible] = useState(true);
 
   useEffect(() => {

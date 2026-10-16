@@ -13,7 +13,7 @@ import (
 
 // Publisher sends one message to a topic. platform.SolaceClient implements it.
 type Publisher interface {
-	PublishDirectMessage(topic string, messageBody string) error
+	PublishDirectMessage(topic, messageBody string) error
 }
 
 type Emitter struct {

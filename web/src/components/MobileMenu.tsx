@@ -18,9 +18,9 @@ const TITLES: Record<View, string> = {
  * (Controls, Info) opens a sheet above it. Tapping the active item, the close
  * button or pressing Escape closes the sheet and returns focus to the item.
  */
-export function MobileMenu({ info, controls }: MobileMenuProps) {
+export function MobileMenu({ info, controls }: Readonly<MobileMenuProps>) {
   const [view, setView] = useState<View | null>(null);
-  const sheetRef = useRef<HTMLDivElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
   const triggerRefs = useRef<Record<View, HTMLButtonElement | null>>({ controls: null, info: null });
   const lastView = useRef<View | null>(null);
   const titleId = useId();
@@ -32,7 +32,7 @@ export function MobileMenu({ info, controls }: MobileMenuProps) {
   useEffect(() => {
     if (view) {
       lastView.current = view;
-      sheetRef.current?.focus();
+      closeRef.current?.focus();
     } else if (lastView.current) {
       triggerRefs.current[lastView.current]?.focus();
       lastView.current = null;
@@ -58,17 +58,15 @@ export function MobileMenu({ info, controls }: MobileMenuProps) {
       {/* Always mounted (just hidden): the filter state lives inside the controls
           and must survive closing the sheet, otherwise the UI would show reset
           filters while the broker subscription is still filtered. */}
-      <div
-        ref={sheetRef}
+      <dialog
         className="hud-sheet"
-        role="dialog"
+        open={!!view}
         aria-labelledby={titleId}
-        tabIndex={-1}
         hidden={!view}
       >
         <div className="hud-sheet__head">
           <h2 id={titleId} className="hud-title">{TITLES[view ?? 'controls']}</h2>
-          <button type="button" className="hud-btn hud-btn--icon hud-btn--ghost" onClick={close} aria-label="Close">
+          <button ref={closeRef} type="button" className="hud-btn hud-btn--icon hud-btn--ghost" onClick={close} aria-label="Close">
             <IconClose />
           </button>
         </div>
@@ -76,7 +74,7 @@ export function MobileMenu({ info, controls }: MobileMenuProps) {
           <div hidden={view !== 'controls'}>{controls}</div>
           <div hidden={view !== 'info'}>{info}</div>
         </div>
-      </div>
+      </dialog>
 
       <nav className="hud-nav" aria-label="Main">
         {items.map((item) => (

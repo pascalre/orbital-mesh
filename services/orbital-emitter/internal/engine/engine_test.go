@@ -65,6 +65,7 @@ const oneSat = "ISS (ZARYA)\n1 25544U 98067A   24001.50000000  .00016717  00000-
 func run(t *testing.T, e *fakeEmitter, c *fakeCatalog, b *fakeBeat) (stop func()) {
 	t.Helper()
 	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel) // also cancelled by stop(); cancel is idempotent
 	done := make(chan struct{})
 	go func() { NewEngine(e, c, b, 5*time.Millisecond).Start(ctx); close(done) }()
 	return func() {
