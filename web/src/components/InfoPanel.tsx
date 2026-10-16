@@ -1,176 +1,128 @@
-import * as React from 'react';
+import { useId, useState } from 'react';
 import solaceLogo from '../assets/solace.svg';
 import githubLogo from '../assets/github-lockup.svg';
+import { IconChevronDown } from './icons';
 
 interface InfoPanelProps {
-  /** When true, render content only (no fixed-corner positioning / collapse toggle); host sheet handles layout. */
+  /** When true, render content only (no fixed-corner panel chrome / collapse toggle); the host sheet handles layout. */
   mobile?: boolean;
 }
 
+const DID_YOU_KNOW = [
+  'Every satellite orbit is described by a TLE set: two lines of 69 characters each, pure physics.',
+  'Molniya orbits spend about 11 of their 12 hours over the northern hemisphere, ideal for high-latitude communications.',
+  'The Kessler syndrome describes a cascade of collisions in which debris makes entire orbits unusable.',
+  'Sputnik 1 was the first artificial satellite and marked the beginning of the space age in 1957.',
+  'Geostationary satellites orbit at 35,786 km, exactly matching the rotation of the Earth.',
+  'The ISS serves as a microgravity research lab at an altitude of about 420 km.',
+];
+
 export function InfoPanel({ mobile = false }: InfoPanelProps = {}) {
-  // On desktop the panel starts open in the corner. On mobile the host sheet
-  // controls visibility, so content is always expanded when mounted.
-  const [isExpanded, setIsExpanded] = React.useState(true);
+  const [isExpanded, setIsExpanded] = useState(true);
+  const bodyId = useId();
+  const [randomFact] = useState(() => DID_YOU_KNOW[Math.floor(Math.random() * DID_YOU_KNOW.length)]);
 
-  const didYouKnowFacts = [
-    "Satellites omit their orbital elements using a TLE set. Each line is 69 characters of pure physics.",
-    "Molniya Orbits spend 11h of their 12h period over the northern hemisphere for stable communications.",
-    "The Kessler Syndrome describes a cascade effect of debris making orbits unusable.",
-    "Sputnik 1 was the first artificial satellite, marking the beginning of the space age in 1957.",
-    "Geostationary satellites orbit at 35,786 km to match the Earth's rotation.",
-    "The ISS serves as a microgravity research lab at an altitude of ~420 km."
-  ];
+  const content = (
+    <>
+      <section aria-labelledby={`${bodyId}-about`}>
+        <h2 id={`${bodyId}-about`} className="hud-title">Orbital Mesh</h2>
+        <p className="hud-dim" style={{ margin: '6px 0 0' }}>
+          A digital twin of Earth&apos;s orbital environment. Every dot is a real satellite, moved by
+          a live stream of events instead of page refreshes.
+        </p>
+      </section>
 
-  const [randomFact] = React.useState(() => didYouKnowFacts[Math.floor(Math.random() * didYouKnowFacts.length)]);
+      <section aria-labelledby={`${bodyId}-flow`} style={{ marginTop: 22 }}>
+        <h3 id={`${bodyId}-flow`} className="hud-eyebrow" style={{ marginBottom: 14 }}>How it works</h3>
+        <ol className="hud-steps">
+          <li>
+            <strong>Data source</strong>
+            <p>
+              <b>TLE sets</b> from CelesTrak are turned into geodetic coordinates by <b>SGP4</b>.
+            </p>
+          </li>
+          <li>
+            <strong>Event broker</strong>
+            <p>
+              A Go client publishes each position to <b>Solace</b> on hierarchical topics.
+            </p>
+          </li>
+          <li>
+            <strong>3D visualization</strong>
+            <p>
+              <b>React and Three.js</b> subscribe over <b>WebSockets</b> and render the stream in WebGL.
+            </p>
+          </li>
+        </ol>
+      </section>
 
-  const sectionHeaderStyle: React.CSSProperties = {
-    fontSize: '0.95rem',
-    fontWeight: 'bold',
-    borderBottom: '1px solid rgba(255, 255, 255, 0.2)',
-    paddingBottom: '4px',
-    marginBottom: '10px',
-    marginTop: '18px',
-    textTransform: 'uppercase',
-    letterSpacing: '1px',
-    color: '#ccc'
-  };
+      <section aria-labelledby={`${bodyId}-fact`} style={{ marginTop: 22 }}>
+        <h3 id={`${bodyId}-fact`} className="hud-eyebrow" style={{ marginBottom: 10 }}>Did you know?</h3>
+        <p className="hud-quote">{randomFact}</p>
+      </section>
 
-  // On mobile the sheet supplies visibility, so treat content as always open.
-  const open = mobile ? true : isExpanded;
+      <footer className="hud-footer" style={{ marginTop: 22 }}>
+        <span>
+          Textures:{' '}
+          <a className="hud-link" href="https://www.solarsystemscope.com/textures/" target="_blank" rel="noopener noreferrer">
+            Solar System Scope
+          </a>
+          <br />
+          Data:{' '}
+          <a className="hud-link" href="https://celestrak.org" target="_blank" rel="noopener noreferrer">
+            CelesTrak
+          </a>
+        </span>
+        <span>
+          Built by{' '}
+          <a className="hud-link" href="https://www.linkedin.com/in/pascal-reitermann/" target="_blank" rel="noopener noreferrer">
+            Pascal
+          </a>{' '}
+          <a
+            href="https://github.com/pascalre/orbital-mesh"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Orbital Mesh on GitHub"
+            style={{ marginLeft: 6 }}
+          >
+            <img src={githubLogo} alt="" />
+          </a>
+        </span>
+      </footer>
+    </>
+  );
 
-  const desktopContainerStyle: React.CSSProperties = {
-    position: 'absolute',
-    top: '25px',
-    left: '25px',
-    zIndex: 10,
-    color: 'white',
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-    padding: '20px 25px',
-    borderRadius: '14px',
-    width: open ? '430px' : '160px',
-    transition: 'all 0.4s cubic-bezier(0.175, 1, 0.32, 1)',
-    backdropFilter: 'blur(12px)',
-    border: '1px solid rgba(255, 255, 255, 0.15)',
-    fontFamily: 'sans-serif',
-    boxShadow: '0 12px 40px rgba(0,0,0,0.6)',
-    maxHeight: 'calc(100vh - 100px)',
-    overflow: 'hidden',
-  };
-
-  const mobileContainerStyle: React.CSSProperties = {
-    color: 'white',
-    fontFamily: 'sans-serif',
-    padding: '4px 4px 8px',
-  };
+  if (mobile) {
+    return (
+      <div className="hud-flat">
+        <img src={solaceLogo} width={110} alt="Solace" style={{ display: 'block', marginBottom: 18 }} />
+        {content}
+      </div>
+    );
+  }
 
   return (
-    <div style={mobile ? mobileContainerStyle : desktopContainerStyle}>
-
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: open ? '16px' : '0px',
-        transition: 'margin 0.4s'
-      }}>
-        <img
-          src={solaceLogo}
-          width={open ? "125px" : "80px"}
-          alt="Solace Logo"
-          style={{ transition: 'width 0.4s' }}
-        />
-
-        {!mobile && (
-          <button
-            onClick={() => setIsExpanded(!isExpanded)}
-            style={{
-              background: 'rgba(255, 255, 255, 0.1)',
-              border: 'none',
-              color: '#00c897',
-              cursor: 'pointer',
-              borderRadius: '6px',
-              padding: '6px 10px',
-              fontSize: '0.7rem',
-              fontWeight: 'bold',
-              transition: 'background 0.2s',
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)')}
-            onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)')}
-          >
-            {isExpanded ? 'CLOSE' : 'INFO'}
-          </button>
-        )}
+    <aside
+      className="hud-panel hud-panel--left"
+      aria-label="About Orbital Mesh"
+      style={isExpanded ? undefined : { width: 'auto' }}
+    >
+      <div className="hud-info-head">
+        <img src={solaceLogo} width={isExpanded ? 118 : 84} alt="Solace" style={{ transition: 'width 0.3s' }} />
+        <button
+          type="button"
+          className="hud-btn"
+          aria-expanded={isExpanded}
+          aria-controls={bodyId}
+          onClick={() => setIsExpanded((v) => !v)}
+        >
+          {isExpanded ? 'Hide' : 'Info'}
+          <IconChevronDown style={{ transform: isExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+        </button>
       </div>
-
-      <div style={{
-        opacity: open ? 1 : 0,
-        transition: 'opacity 0.3s ease-in-out',
-        display: open ? 'block' : 'none'
-      }}>
-        <h2 style={{ ...sectionHeaderStyle, marginTop: 0 }}>ORBITAL MESH</h2>
-        <p style={{ fontSize: '0.85rem', opacity: 0.9, lineHeight: '1.5', marginBottom: '12px' }}>
-          This interactive Digital Twin tracks live orbital positions. It orchestrates telemetry data via Solace,
-          transforming raw event streams into an immersive 3D experience.
-        </p>
-
-        <h2 style={sectionHeaderStyle}>SYSTEM ARCHITECTURE</h2>
-        <div style={{ fontSize: '0.85rem', lineHeight: '1.4' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                <span style={{ color: '#00c897', fontWeight: 'bold', fontSize: '0.75rem' }}>DATA SOURCE</span>
-              </div>
-              <p style={{ margin: 0, opacity: 0.8, fontSize: '0.8rem' }}>
-                Raw <strong>TLE sets</strong> are fetched from CelesTrak and mapped via <strong>SGP4 algorithms</strong> into high-precision geodetic coordinates.
-              </p>
-            </div>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                <span style={{ color: '#00c897', fontWeight: 'bold', fontSize: '0.75rem' }}>EVENT BROKER</span>
-              </div>
-              <p style={{ margin: 0, opacity: 0.8, fontSize: '0.8rem' }}>
-                Coordinates are sent to <strong>Solace</strong> via SMF using a high-performant Go client with hierarchical topics.
-              </p>
-            </div>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                <span style={{ color: '#00c897', fontWeight: 'bold', fontSize: '0.75rem' }}>3D VISUALIZATION</span>
-              </div>
-              <p style={{ margin: 0, opacity: 0.8, fontSize: '0.8rem' }}>
-                <strong>React & Three.js</strong> consume the stream via <strong>WebSockets</strong> within a WebGL environment.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <h2 style={sectionHeaderStyle}>DID YOU KNOW?</h2>
-        <p style={{ fontSize: '0.8rem', opacity: 0.8, fontStyle: 'italic', borderLeft: '3px solid #00c897', paddingLeft: '12px', lineHeight: '1.4' }}>
-          {randomFact}
-        </p>
-
-        <div style={{
-          marginTop: '25px',
-          paddingTop: '12px',
-          borderTop: '1px solid rgba(255,255,255,0.1)',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center'
-        }}>
-          <div style={{ fontSize: '0.7rem', opacity: 0.6, lineHeight: '1.5' }}>
-            Textures: <a href="https://www.solarsystemscope.com/textures/" target="_blank" style={{ color: '#00c897', textDecoration: 'none' }}>Solar System Scope</a><br />
-            Data: <a href="https://celestrak.org" target="_blank" style={{ color: '#00c897', textDecoration: 'none' }}>CelesTrak</a>
-          </div>
-
-          <div style={{ textAlign: 'right' }}>
-            <span style={{ fontSize: '0.75rem', opacity: 0.8 }}>
-              Built by <a href="https://www.linkedin.com/in/pascal-reitermann/" target="_blank" style={{ color: '#00c897', textDecoration: 'none' }}>Pascal</a>
-            </span>
-            <a href="https://github.com/pascalre/orbital-mesh" target="_blank">
-              <img src={githubLogo} height="14" alt="GitHub" style={{ marginLeft: '10px', verticalAlign: 'middle', opacity: 0.8 }} />
-            </a>
-          </div>
-        </div>
+      <div id={bodyId} className="hud-panel__scroll" hidden={!isExpanded} style={{ paddingTop: 4 }}>
+        {content}
       </div>
-    </div>
+    </aside>
   );
 }

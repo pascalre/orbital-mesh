@@ -6,6 +6,7 @@ interface SatelliteManagerProps {
   solaceData: any;
   isConnected: boolean;
   onHoverSatellite: (data: any) => void;
+  onSelectSatellite: (data: any) => void;
   onCountChange?: (count: number) => void;
   isMobile?: boolean;
 }
@@ -15,6 +16,7 @@ export function SatelliteManager({
   solaceData,
   isConnected,
   onHoverSatellite,
+  onSelectSatellite,
   onCountChange,
   isMobile = false
 }: SatelliteManagerProps) {
@@ -95,26 +97,23 @@ export function SatelliteManager({
           key={id}
           name={satData.name}
           data={satData}
+          // Touch has no hover: a tap pins the card. On desktop hover previews,
+          // a click pins.
+          onClick={(e) => {
+            e.stopPropagation();
+            onSelectSatellite({ ...satData, x: e.clientX, y: e.clientY });
+          }}
           onPointerOver={(e) => {
             e.stopPropagation();
-            onHoverSatellite({
-              ...satData,
-              x: e.clientX,
-              y: e.clientY
-            });
+            if (isMobile) return;
+            onHoverSatellite({ ...satData, x: e.clientX, y: e.clientY });
             document.body.style.cursor = 'pointer';
           }}
           onPointerMove={(e) => {
-            // On touch, don't chase the finger — keep the pinned card stable.
             if (isMobile) return;
-            onHoverSatellite({
-              ...satData,
-              x: e.clientX,
-              y: e.clientY
-            });
+            onHoverSatellite({ ...satData, x: e.clientX, y: e.clientY });
           }}
           onPointerOut={() => {
-            // On touch there's no real "out"; the tooltip's close button dismisses it.
             if (isMobile) return;
             onHoverSatellite(null);
             document.body.style.cursor = 'auto';

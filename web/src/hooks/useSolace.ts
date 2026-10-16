@@ -1,11 +1,17 @@
-import { useEffect, useState, useRef } from 'react';
-import { solaceSubscriber } from '../services/subscriber';
+import { useCallback, useEffect, useState, useRef } from 'react';
+import { solaceSubscriber, type ConnectionStatus } from '../services/subscriber';
+
+export type { ConnectionStatus };
 
 export const useSolace = (topic: string | string[]) => {
   const [data, setData] = useState<any>(null);
   const [msgRate, setMsgRate] = useState(0);
-  const [isConnected, setIsConnected] = useState(false);
+  const [status, setStatus] = useState<ConnectionStatus>(() => solaceSubscriber.getStatus());
+  const [error, setError] = useState<string | null>(null);
   const [satelliteCount, setSatelliteCount] = useState(0);
+
+  // Satellites stay on screen while the broker reconnects.
+  const isConnected = status === 'live' || status === 'reconnecting';
 
   // Normalize to a stable, order-independent key so effects only re-run when the
   // set of topics actually changes.
@@ -15,44 +21,58 @@ export const useSolace = (topic: string | string[]) => {
   const activeSubscriptionRef = useRef<string | null>(null);
   const activeSatellitesRef = useRef(new Set<string>());
 
+  const topicsRef = useRef(topics);
   const setDataRef = useRef(setData);
   const setSatelliteCountRef = useRef(setSatelliteCount);
   const smoothedRateRef = useRef(0);
   const ALPHA = 0.8;
 
   useEffect(() => {
+    topicsRef.current = topics;
     setDataRef.current = setData;
     setSatelliteCountRef.current = setSatelliteCount;
   });
 
   useEffect(() => {
-    const init = async () => {
-      try {
-        if (!solaceSubscriber.isConnected()) {
-          await solaceSubscriber.connect({
-            url: import.meta.env.VITE_SOLACE_URL,
-            vpnName: import.meta.env.VITE_SOLACE_VPN,
-            userName: import.meta.env.VITE_SOLACE_USER,
-            password: import.meta.env.VITE_SOLACE_PASS,
-          });
-        }
-
-        setIsConnected(true);
-        subscribeToTopics(topics);
-
-        solaceSubscriber.startRateCalculation((rawRate) => {
-          const nextRate = smoothedRateRef.current + ALPHA * (rawRate - smoothedRateRef.current);
-
-          smoothedRateRef.current = nextRate;
-          setMsgRate(Math.round(nextRate));
-        });
-      } catch (err) {
-        console.error("Solace Connection Error:", err);
+    return solaceSubscriber.onStatus((next, detail) => {
+      setStatus(next);
+      setError(next === 'offline' ? (detail ?? 'Connection lost') : null);
+      if (next === 'offline') {
+        activeSubscriptionRef.current = null;
       }
-    };
-
-    init();
+    });
   }, []);
+
+  const connect = useCallback(async () => {
+    try {
+      if (!solaceSubscriber.isConnected()) {
+        await solaceSubscriber.connect({
+          url: import.meta.env.VITE_SOLACE_URL,
+          vpnName: import.meta.env.VITE_SOLACE_VPN,
+          userName: import.meta.env.VITE_SOLACE_USER,
+          password: import.meta.env.VITE_SOLACE_PASS,
+        });
+      }
+
+      subscribeToTopics(topicsRef.current);
+
+      solaceSubscriber.startRateCalculation((rawRate) => {
+        const nextRate = smoothedRateRef.current + ALPHA * (rawRate - smoothedRateRef.current);
+
+        smoothedRateRef.current = nextRate;
+        setMsgRate(Math.round(nextRate));
+      });
+    } catch (err) {
+      // The subscriber has already published the "offline" status with a reason.
+      console.error("Solace Connection Error:", err);
+    }
+    // subscribeToTopics only uses refs and stable setters
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    connect();
+  }, [connect]);
 
   const subscribeToTopics = (targetTopics: string[]) => {
     const targetKey = [...targetTopics].sort().join('|');
@@ -105,5 +125,5 @@ export const useSolace = (topic: string | string[]) => {
     return true;
   }
 
-  return { data, isConnected, msgRate, satelliteCount };
+  return { data, isConnected, status, error, retry: connect, msgRate, satelliteCount };
 };

@@ -3,7 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2280%22>🌍</text></svg>">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="description" content="Live 3D view of satellite positions streamed through a Solace event mesh." />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="theme-color" content="#000000" />
@@ -11,6 +12,7 @@
   </head>
   <body>
     <div id="root"></div>
+    <noscript>Orbital Mesh needs JavaScript to render the live satellite globe.</noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
