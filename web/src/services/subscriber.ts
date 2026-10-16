@@ -7,6 +7,11 @@ export interface SolaceConfig {
   password?: string;
 }
 
+/** Connection state as the UI shows it. */
+export type ConnectionStatus = 'connecting' | 'live' | 'reconnecting' | 'offline';
+
+type StatusListener = (status: ConnectionStatus, detail?: string) => void;
+
 export class SolaceSubscriber {
   private session: solace.Session | null = null;
   private factory: typeof solace.SolclientFactory;
@@ -15,7 +20,11 @@ export class SolaceSubscriber {
 
   private msgCount = 0;
   private currentRate = 0;
+  private rateTimer: ReturnType<typeof setInterval> | null = null;
   private activeTopics = new Set<string>();
+
+  private status: ConnectionStatus = 'connecting';
+  private statusListeners = new Set<StatusListener>();
 
   constructor() {
     this.factory = solace.SolclientFactory;
@@ -27,8 +36,27 @@ export class SolaceSubscriber {
     return this.connected && this.session !== null;
   }
 
+  public getStatus(): ConnectionStatus {
+    return this.status;
+  }
+
+  /** Subscribe to connection state changes. Returns an unsubscribe function. */
+  public onStatus(listener: StatusListener): () => void {
+    this.statusListeners.add(listener);
+    return () => {
+      this.statusListeners.delete(listener);
+    };
+  }
+
+  private setStatus(status: ConnectionStatus, detail?: string) {
+    this.status = status;
+    this.statusListeners.forEach((listener) => listener(status, detail));
+  }
+
   public startRateCalculation(callback: (rate: number) => void) {
-    setInterval(() => {
+    // Restarting (e.g. after a retry) must not stack timers.
+    if (this.rateTimer) clearInterval(this.rateTimer);
+    this.rateTimer = setInterval(() => {
       this.currentRate = this.msgCount;
       this.msgCount = 0;
       callback(this.currentRate);
@@ -38,22 +66,46 @@ export class SolaceSubscriber {
   public async connect(config: SolaceConfig): Promise<void> {
     if (this.session) return;
 
+    this.setStatus('connecting');
+
     return new Promise((resolve, reject) => {
       try {
-        this.session = this.factory.createSession({
+        const session = this.factory.createSession({
           url: config.url,
           vpnName: config.vpnName,
           userName: config.userName,
           password: config.password,
         });
+        this.session = session;
 
-        this.session.on(solace.SessionEventCode.UP_NOTICE, () => {
+        session.on(solace.SessionEventCode.UP_NOTICE, () => {
           this.connected = true;
+          this.setStatus('live');
           console.log('✅ Solace Session Up');
           resolve();
         });
 
-        this.session.on(solace.SessionEventCode.MESSAGE, (message: solace.Message) => {
+        session.on(solace.SessionEventCode.CONNECT_FAILED_ERROR, (event: solace.SessionEvent) => {
+          const reason = event?.infoStr || 'Could not connect to the event broker';
+          this.teardown();
+          this.setStatus('offline', reason);
+          reject(new Error(reason));
+        });
+
+        session.on(solace.SessionEventCode.DISCONNECTED, () => {
+          this.teardown();
+          this.setStatus('offline', 'Connection to the event broker was lost');
+        });
+
+        session.on(solace.SessionEventCode.RECONNECTING_NOTICE, () => {
+          this.setStatus('reconnecting');
+        });
+
+        session.on(solace.SessionEventCode.RECONNECTED_NOTICE, () => {
+          this.setStatus('live');
+        });
+
+        session.on(solace.SessionEventCode.MESSAGE, (message: solace.Message) => {
           this.msgCount++;
 
           if (this.messageCallback) {
@@ -61,11 +113,25 @@ export class SolaceSubscriber {
           }
         });
 
-        this.session.connect();
+        session.connect();
       } catch (error) {
+        this.teardown();
+        this.setStatus('offline', error instanceof Error ? error.message : 'Connection failed');
         reject(error);
       }
     });
+  }
+
+  /** Drop the dead session so that connect() can be called again. */
+  private teardown() {
+    try {
+      this.session?.dispose();
+    } catch {
+      // already gone
+    }
+    this.session = null;
+    this.connected = false;
+    this.activeTopics.clear();
   }
 
   public subscribe(topicName: string, onMessage: (payload: any) => void): void {

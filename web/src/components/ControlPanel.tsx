@@ -1,99 +1,200 @@
-import * as React from 'react';
-import { useMemo } from 'react';
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { REGIONS, getRegion, cellsForRegion } from '../utils/geoGrid';
+import type { ConnectionStatus } from '../services/subscriber';
+import {
+  IconCheck,
+  IconChevronDown,
+  IconCopy,
+  IconCrosshair,
+  IconReset,
+} from './icons';
 
-const ORBIT_OPTIONS = ["*", "leo", "geo", "sso", "meo", "heo", "molniya", "po"];
-const PROVIDER_OPTIONS = ["*", "centispace", "cosmo", "ermis", "femto", "glonass", "gps", "hades", "hawk", "hulianwang", "iss", "irnss", "jack", "jilin", "kuiper", "lpntsat", "oneweb", "optisat", "parus", "progress", "qianfan", "rassvet", "shiyan", "spoqc", "starlink", "strix", "superview", "ten", "transporter", "xinzhengcheng"];
+const ORBIT_OPTIONS: { value: string; label: string }[] = [
+  { value: '*', label: 'All orbits' },
+  { value: 'leo', label: 'LEO · Low Earth' },
+  { value: 'sso', label: 'SSO · Sun-synchronous' },
+  { value: 'po', label: 'PO · Polar' },
+  { value: 'meo', label: 'MEO · Medium Earth' },
+  { value: 'geo', label: 'GEO · Geostationary' },
+  { value: 'heo', label: 'HEO · Highly elliptical' },
+  { value: 'molniya', label: 'Molniya' },
+];
+
+const PROVIDER_VALUES = ["centispace", "cosmo", "ermis", "femto", "glonass", "gps", "hades", "hawk", "hulianwang", "iss", "irnss", "jack", "jilin", "kuiper", "lpntsat", "oneweb", "optisat", "parus", "progress", "qianfan", "rassvet", "shiyan", "spoqc", "starlink", "strix", "superview", "ten", "transporter", "xinzhengcheng"];
+const PROVIDER_ACRONYMS = new Set(['gps', 'iss', 'irnss', 'glonass', 'spoqc', 'lpntsat']);
+const PROVIDER_OPTIONS: { value: string; label: string }[] = [
+  { value: '*', label: 'All providers' },
+  ...PROVIDER_VALUES.map((value) => ({
+    value,
+    label: PROVIDER_ACRONYMS.has(value) ? value.toUpperCase() : value.charAt(0).toUpperCase() + value.slice(1),
+  })),
+];
+
+const ISS_NORAD_ID = '25544';
+const MAX_EVENTS = 5;
+const EVENT_MIN_INTERVAL_MS = 250; // the feed is for humans, not a firehose
+const EMPTY_HINT_DELAY_MS = 5000;
+
 interface EventLog {
   id: string;
   timestamp: string;
   satellite: string;
   topic: string;
   altitude: number;
-  latitude?: number;
-  longitude?: number;
+  latitude: number;
+  longitude: number;
 }
+
 interface ControlPanelProps {
   /** Emits the full set of broker topics to subscribe to (one per grid cell when a region is chosen). */
   onFilterChange: (topics: string[]) => void;
   /** Raises the selected region key so the 3D grid overlay can be drawn. */
   onRegionChange?: (regionKey: string) => void;
   satelliteCount: number;
-  msgRate: number;
-  isConnected: boolean;
+  status: ConnectionStatus;
   solaceData: any;
-  /** When true, render content only (no fixed-corner positioning); host sheet handles layout. */
+  autoRotate: boolean;
+  onAutoRotateChange: (value: boolean) => void;
+  /** When true, render content only (no fixed-corner panel chrome); the host sheet handles layout. */
   mobile?: boolean;
 }
 
-export function ControlPanel({ onFilterChange, onRegionChange, satelliteCount, msgRate, isConnected, solaceData, mobile = false }: ControlPanelProps) {
-  const [events, setEvents] = useState<EventLog[]>([]);
+function Clock() {
+  const [now, setNow] = useState(() => new Date());
 
-  const [time, setTime] = useState(new Date());
-  const [selectedOrbit, setSelectedOrbit] = React.useState("*");
-  const [selectedNoradID, setSelectedNoradID] = React.useState("*");
-  const [selectedProvider, setSelectedProvider] = React.useState("*");
-  const [selectedRegion, setSelectedRegion] = React.useState("all");
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <div className="hud-clock">
+      <time className="hud-clock__time" dateTime={now.toISOString()}>
+        {now.toLocaleTimeString('en-US', { timeZone: 'UTC', hour12: false })}
+        <span className="hud-clock__unit"> UTC</span>
+      </time>
+      <span className="hud-eyebrow">
+        {now.toLocaleDateString('en-US', { timeZone: 'UTC', weekday: 'short', day: '2-digit', month: 'short' })}
+      </span>
+    </div>
+  );
+}
+
+interface SectionProps {
+  title: string;
+  badge?: number;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}
+
+function Section({ title, badge, defaultOpen = true, children }: SectionProps) {
+  return (
+    <details className="hud-section" open={defaultOpen}>
+      <summary>
+        <span className="hud-eyebrow">{title}</span>
+        {badge ? <span className="hud-badge" aria-label={`${badge} active`}>{badge}</span> : null}
+        <IconChevronDown className="hud-chevron" />
+      </summary>
+      <div className="hud-section__body">{children}</div>
+    </details>
+  );
+}
+
+export function ControlPanel({
+  onFilterChange,
+  onRegionChange,
+  satelliteCount,
+  status,
+  solaceData,
+  autoRotate,
+  onAutoRotateChange,
+  mobile = false,
+}: ControlPanelProps) {
+  const ids = {
+    orbit: useId(),
+    provider: useId(),
+    norad: useId(),
+    noradHint: useId(),
+    region: useId(),
+    rotate: useId(),
+  };
+
+  const [events, setEvents] = useState<EventLog[]>([]);
+  const lastEventAt = useRef(0);
+
+  const [selectedOrbit, setSelectedOrbit] = useState('*');
+  const [selectedNoradID, setSelectedNoradID] = useState('*');
+  const [selectedProvider, setSelectedProvider] = useState('*');
+  const [selectedRegion, setSelectedRegion] = useState('all');
+  const [copied, setCopied] = useState(false);
+  const [settled, setSettled] = useState(false);
+
+  const isTrackingISS =
+    selectedOrbit === 'leo' && selectedProvider === 'iss' && selectedNoradID === ISS_NORAD_ID && selectedRegion === 'all';
+
+  const activeFilterCount =
+    (selectedOrbit !== '*' ? 1 : 0) +
+    (selectedProvider !== '*' ? 1 : 0) +
+    (selectedNoradID !== '*' ? 1 : 0) +
+    (selectedRegion !== 'all' ? 1 : 0);
 
   const focusISS = () => {
     setEvents([]);
-    setSelectedOrbit("leo");
-    setSelectedProvider("iss");
-    setSelectedNoradID("25544");
-    setSelectedRegion("all");
+    setSelectedOrbit('leo');
+    setSelectedProvider('iss');
+    setSelectedNoradID(ISS_NORAD_ID);
+    setSelectedRegion('all');
   };
 
   const clearFilters = () => {
     setEvents([]);
-    setSelectedOrbit("*");
-    setSelectedProvider("*");
-    setSelectedNoradID("*");
-    setSelectedRegion("all");
+    setSelectedOrbit('*');
+    setSelectedProvider('*');
+    setSelectedNoradID('*');
+    setSelectedRegion('all');
   };
-
-  const getTopicPart = (value: string) => value === "ALL" ? "*" : value;
 
   useEffect(() => {
     if (!solaceData) return;
+
+    // Throttle: the event stream is a glance, not a log.
+    const nowMs = Date.now();
+    if (nowMs - lastEventAt.current < EVENT_MIN_INTERVAL_MS) return;
+
     try {
-      let rawString = "";
-      if (typeof solaceData.getBinaryAttachment === 'function') {
-        rawString = solaceData.getBinaryAttachment();
-      } else {
-        rawString = solaceData;
-      }
+      const rawString: string =
+        typeof solaceData.getBinaryAttachment === 'function' ? solaceData.getBinaryAttachment() : solaceData;
 
       const jsonStart = rawString.indexOf('{');
       const jsonEnd = rawString.lastIndexOf('}');
       if (jsonStart === -1) return;
 
       const payload = JSON.parse(rawString.substring(jsonStart, jsonEnd + 1));
-      const topicName = solaceData.getDestination ? solaceData.getDestination().getName() : 'N/A';
+      const topicName: string = solaceData.getDestination ? solaceData.getDestination().getName() : 'N/A';
 
-
+      lastEventAt.current = nowMs;
       const newEvent: EventLog = {
-        id: Math.random().toString(36).substr(2, 5),
-        timestamp: new Date().toLocaleTimeString('en-US', { hour12: false, timeZone: 'UTC' }),
-        satellite: payload.id || payload.name || 'Unknown',
+        id: `${nowMs}-${payload.id ?? payload.name ?? 'sat'}`,
+        timestamp: new Date(nowMs).toLocaleTimeString('en-US', { hour12: false, timeZone: 'UTC' }),
+        satellite: String(payload.id || payload.name || 'Unknown'),
         topic: topicName,
-        altitude: payload.alt || payload.altitude || 0,
-        latitude: payload.lat || payload.latitude || 0,
-        longitude: payload.lng || payload.longitude || 0,
+        altitude: Number(payload.alt ?? payload.altitude ?? 0),
+        latitude: Number(payload.lat ?? payload.latitude ?? 0),
+        longitude: Number(payload.lng ?? payload.longitude ?? 0),
       };
 
-      setEvents(prev => [newEvent, ...prev].slice(0, 5));
+      setEvents((prev) => [newEvent, ...prev].slice(0, MAX_EVENTS));
     } catch (e) {
-      console.error("Stream Error:", e);
+      console.error('Stream Error:', e);
     }
   }, [solaceData]);
 
   // Build the broker subscription topics. Base filter is orbit/provider/norad;
   // when a region is selected we fan out to one topic per grid cell it covers.
   const { activeTopics, displayTopic } = useMemo(() => {
-    const orbit = getTopicPart(selectedOrbit);
-    const provider = getTopicPart(selectedProvider);
-    const noradID = getTopicPart(selectedNoradID);
+    const orbit = selectedOrbit;
+    const provider = selectedProvider;
+    const noradID = selectedNoradID;
     const base = `earth/sat/tracked/${orbit}/${provider}/${noradID}`;
 
     const region = getRegion(selectedRegion);
@@ -110,245 +211,176 @@ export function ControlPanel({ onFilterChange, onRegionChange, satelliteCount, m
     };
   }, [selectedOrbit, selectedProvider, selectedNoradID, selectedRegion]);
 
-  useEffect(() => {
-    const timer = setInterval(() => setTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
+  const topicKey = activeTopics.join('|');
 
-  React.useEffect(() => {
+  useEffect(() => {
     onFilterChange(activeTopics);
   }, [activeTopics, onFilterChange]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     onRegionChange?.(selectedRegion);
   }, [selectedRegion, onRegionChange]);
 
-  const filterGroupStyle: React.CSSProperties = {
-    display: 'flex',
-    flexDirection: 'column',
-    flex: 1,
-    marginRight: '12px'
-  };
+  // After a filter change, give the broker a moment before claiming "no results".
+  useEffect(() => {
+    setSettled(false);
+    const timer = setTimeout(() => setSettled(true), EMPTY_HINT_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [topicKey]);
 
-  const selectStyle: React.CSSProperties = {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    color: '#00c897',
-    border: '1px solid rgba(0, 242, 255, 0.3)',
-    borderRadius: '4px',
-    padding: '6px',
-    width: '100%',
-    fontSize: '0.85rem',
-    outline: 'none',
-    cursor: 'pointer'
-  };
+  const copyTopic = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(activeTopics.join('\n'));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      // Clipboard can be unavailable (insecure context, permissions): stay silent.
+    }
+  }, [activeTopics]);
 
-  const sectionHeaderStyle: React.CSSProperties = {
-    fontSize: '0.95rem',
-    fontWeight: 'bold',
-    borderBottom: '1px solid rgba(255, 255, 255, 0.2)',
-    paddingBottom: '4px',
-    marginBottom: '10px',
-    marginTop: '18px',
-    textTransform: 'uppercase',
-    letterSpacing: '1px',
-    color: '#ccc'
-  };
+  const showEmptyHint = status === 'live' && settled && satelliteCount === 0;
 
-  const statRowStyle: React.CSSProperties = {
-    display: 'flex',
-    justifyContent: 'space-between',
-    fontSize: '0.85rem',
-    marginBottom: '6px'
-  };
+  const body = (
+    <>
+      <Clock />
 
-  const desktopContainerStyle: React.CSSProperties = {
-    position: 'absolute',
-    top: '25px',
-    right: '25px',
-    zIndex: 10,
-    color: 'white',
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-    padding: '20px 25px',
-    borderRadius: '14px',
-    width: '430px',
-    backdropFilter: 'blur(12px)',
-    border: '1px solid rgba(255, 255, 255, 0.15)',
-    fontFamily: 'sans-serif',
-    boxShadow: '0 12px 40px rgba(0,0,0,0.6)',
-    maxHeight: 'calc(100vh - 100px)',
-    overflowY: 'auto',
-  };
+      <Section title="Filters" badge={activeFilterCount}>
+        <div className="hud-fields">
+          <div className="hud-field">
+            <label className="hud-label" htmlFor={ids.orbit}>Orbit</label>
+            <select
+              id={ids.orbit}
+              className="hud-select"
+              value={selectedOrbit}
+              onChange={(e) => setSelectedOrbit(e.target.value)}
+            >
+              {ORBIT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          </div>
 
-  const mobileContainerStyle: React.CSSProperties = {
-    color: 'white',
-    fontFamily: 'sans-serif',
-    padding: '4px 4px 8px',
-  };
+          <div className="hud-field">
+            <label className="hud-label" htmlFor={ids.provider}>Provider</label>
+            <select
+              id={ids.provider}
+              className="hud-select"
+              value={selectedProvider}
+              onChange={(e) => setSelectedProvider(e.target.value)}
+            >
+              {PROVIDER_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          </div>
+
+          <div className="hud-field">
+            <label className="hud-label" htmlFor={ids.norad}>NORAD ID</label>
+            <input
+              id={ids.norad}
+              className="hud-input"
+              type="text"
+              inputMode="numeric"
+              autoComplete="off"
+              maxLength={9}
+              placeholder="any"
+              aria-describedby={ids.noradHint}
+              value={selectedNoradID === '*' ? '' : selectedNoradID}
+              onChange={(e) => {
+                const digits = e.target.value.replace(/\D/g, '');
+                setSelectedNoradID(digits === '' ? '*' : digits);
+              }}
+            />
+            <span id={ids.noradHint} className="hud-sr-only">Digits only. Leave empty for all satellites.</span>
+          </div>
+
+          <div className="hud-field">
+            <label className="hud-label" htmlFor={ids.region}>Region</label>
+            <select
+              id={ids.region}
+              className="hud-select"
+              value={selectedRegion}
+              onChange={(e) => setSelectedRegion(e.target.value)}
+            >
+              {REGIONS.map((r) => <option key={r.key} value={r.key}>{r.label}</option>)}
+            </select>
+          </div>
+        </div>
+
+        <div className="hud-actions">
+          <button type="button" className="hud-btn hud-btn--accent" aria-pressed={isTrackingISS} onClick={focusISS}>
+            <IconCrosshair /> Track ISS
+          </button>
+          <button type="button" className="hud-btn" onClick={clearFilters} disabled={activeFilterCount === 0}>
+            <IconReset /> Reset
+          </button>
+        </div>
+
+        {showEmptyHint && (
+          <div className="hud-notice" role="status">
+            <span>No satellites match these filters right now. Widen the filters or reset them.</span>
+          </div>
+        )}
+      </Section>
+
+      <Section title="View">
+        <button
+          type="button"
+          id={ids.rotate}
+          className="hud-switch"
+          role="switch"
+          aria-checked={autoRotate}
+          onClick={() => onAutoRotateChange(!autoRotate)}
+        >
+          <span>Auto-rotate globe</span>
+          <span className="hud-switch__track" aria-hidden="true" />
+        </button>
+      </Section>
+
+      <Section title="Subscription">
+        <div className="hud-code">
+          <code>{displayTopic}</code>
+          <button
+            type="button"
+            className="hud-btn hud-btn--icon hud-btn--ghost"
+            onClick={copyTopic}
+            aria-label={copied ? 'Copied' : 'Copy topic subscription'}
+            title="Copy topic subscription"
+          >
+            {copied ? <IconCheck /> : <IconCopy />}
+          </button>
+        </div>
+      </Section>
+
+      <Section title="Event stream">
+        {events.length === 0 ? (
+          <p className="hud-empty">
+            <span className="hud-dot" aria-hidden="true" />
+            Waiting for orbital telemetry…
+          </p>
+        ) : (
+          <ol className="hud-feed" aria-label="Latest position events">
+            {events.map((event) => (
+              <li key={event.id} title={event.topic}>
+                <span className="hud-feed__time">{event.timestamp}</span>
+                <span className="hud-feed__id">#{event.satellite}</span>
+                <span className="hud-dim">{Math.round(event.altitude).toLocaleString('en-US')} km</span>
+                <span className="hud-feed__pos">
+                  {event.latitude.toFixed(2)}°, {event.longitude.toFixed(2)}°
+                </span>
+                <span className="hud-feed__topic">{event.topic}</span>
+              </li>
+            ))}
+          </ol>
+        )}
+      </Section>
+    </>
+  );
+
+  if (mobile) {
+    return <div className="hud-flat">{body}</div>;
+  }
 
   return (
-    <div style={mobile ? mobileContainerStyle : desktopContainerStyle}>
-
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', fontFamily: 'monospace' }}>
-        <div style={{ fontWeight: 'bold', letterSpacing: '2px', fontSize: '1.6rem' }}>
-          {time.toLocaleTimeString('en-US', { timeZone: 'UTC', hour12: false })} UTC
-        </div>
-        <div style={{ fontSize: '0.85rem', opacity: 0.7, marginTop: '2px' }}>
-          {time.toLocaleDateString('en-US', { timeZone: 'UTC', weekday: 'short', day: '2-digit', month: 'short' })}
-        </div>
-      </div>
-
-      <h2 style={sectionHeaderStyle}>FILTERS</h2>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', marginBottom: '8px' }}>
-
-        <div style={filterGroupStyle}>
-          <span style={{ fontSize: '0.75rem', marginBottom: '5px', opacity: 0.7 }}>Orbit</span>
-          <select style={selectStyle} value={selectedOrbit} onChange={(e) => setSelectedOrbit(e.target.value)}>
-            {ORBIT_OPTIONS.map(opt => <option key={opt} value={opt} style={{ color: 'black' }}>{opt}</option>)}
-          </select>
-        </div>
-
-        <div style={filterGroupStyle}>
-          <span style={{ fontSize: '0.75rem', marginBottom: '5px', opacity: 0.7 }}>Provider</span>
-          <select style={selectStyle} value={selectedProvider} onChange={(e) => setSelectedProvider(e.target.value)}>
-            {PROVIDER_OPTIONS.map(opt => <option key={opt} value={opt} style={{ color: 'black' }}>{opt}</option>)}
-          </select>
-        </div>
-
-        <div style={{ ...filterGroupStyle, marginRight: 0 }}>
-          <span style={{ fontSize: '0.75rem', marginBottom: '5px', opacity: 0.7 }}>NORAD ID</span>
-          <input
-            type="text"
-            placeholder="*"
-            style={{
-              ...selectStyle,
-              cursor: 'text',
-              boxSizing: 'border-box',
-            }}
-            value={selectedNoradID === '*' ? '' : selectedNoradID}
-            onChange={(e) => {
-              const val = e.target.value.trim();
-              setSelectedNoradID(val === '' ? '*' : val);
-            }}
-          />
-        </div>
-      </div>
-
-      <div style={{ display: 'flex', flexDirection: 'column', marginTop: '12px' }}>
-        <span style={{ fontSize: '0.75rem', marginBottom: '5px', opacity: 0.7 }}>Region (geo grid)</span>
-        <select
-          style={selectStyle}
-          value={selectedRegion}
-          onChange={(e) => setSelectedRegion(e.target.value)}
-        >
-          {REGIONS.map((r) => (
-            <option key={r.key} value={r.key} style={{ color: 'black' }}>{r.label}</option>
-          ))}
-        </select>
-      </div>
-
-      <div style={{
-        marginTop: '12px',
-        display: 'flex',
-        gap: '10px',
-        justifyContent: 'space-between'
-      }}>
-        <button
-          onClick={focusISS}
-          style={{
-            flex: 1,
-            backgroundColor: 'rgba(0, 200, 151, 0.1)',
-            border: '1px solid #00c897',
-            color: '#00c897',
-            padding: '8px',
-            borderRadius: '4px',
-            fontSize: '0.75rem',
-            fontWeight: 'bold',
-            cursor: 'pointer',
-            letterSpacing: '1px',
-            transition: 'all 0.2s'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = 'rgba(0, 200, 151, 0.2)';
-            e.currentTarget.style.boxShadow = '0 0 10px rgba(0, 200, 151, 0.3)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = 'rgba(0, 200, 151, 0.1)';
-            e.currentTarget.style.boxShadow = 'none';
-          }}
-        >
-          TRACK ISS
-        </button>
-
-        <button
-          onClick={clearFilters}
-          style={{
-            flex: 1,
-            backgroundColor: 'rgba(0, 200, 151, 0.1)',
-            border: '1px solid #00c897',
-            color: '#00c897',
-            padding: '8px',
-            borderRadius: '4px',
-            fontSize: '0.75rem',
-            fontWeight: 'bold',
-            cursor: 'pointer',
-            letterSpacing: '1px',
-            transition: 'all 0.2s'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
-          }}
-        >
-          CLEAR FILTERS
-        </button>
-      </div>
-
-      <h2 style={sectionHeaderStyle}>LIVE STATS</h2>
-      <div style={{ backgroundColor: 'rgba(255,255,255,0.05)', padding: '12px', borderRadius: '8px' }}>
-        <div style={statRowStyle}>
-          <span>Status</span>
-          <span style={{ color: isConnected ? '#00c897' : '#ff4444', fontWeight: 'bold' }}>
-            {isConnected ? '● ONLINE' : '○ OFFLINE'}
-          </span>
-        </div>
-
-        <div style={{ ...statRowStyle, flexDirection: 'column', gap: '4px', marginBottom: '10px' }}>
-          <span>Subscription</span>
-          <span style={{
-            opacity: 0.8,
-            fontSize: '0.85rem',
-            wordBreak: 'break-all',
-            lineHeight: '1.2',
-            fontFamily: 'monospace'
-          }}>
-            {displayTopic}
-          </span>
-        </div>
-
-        <div style={statRowStyle}>
-          <span>Message Rate</span>
-          <span style={{ fontFamily: 'monospace' }}>{msgRate} msg/s</span>
-        </div>
-        <div style={statRowStyle}>
-          <span>Tracked Satellites</span>
-          <span style={{ fontFamily: 'monospace' }}>{satelliteCount}</span>
-        </div>
-      </div>
-
-      <h2 style={sectionHeaderStyle}>EVENT STREAM</h2>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-        {events.length === 0 && (
-          <p style={{ fontSize: '0.85rem', opacity: 0.5, fontStyle: 'italic' }}>Waiting for orbital telemetry...</p>
-        )}
-        {events.map((event) => (
-          <p style={{ fontSize: '0.65rem', fontFamily: 'monospace', borderLeft: '3px solid #00c897', paddingLeft: '12px', lineHeight: '1.4' }}>
-            {event.topic}<br />[{event.timestamp}] LAT: {event.latitude?.toFixed(2)}, LON: {event.longitude?.toFixed(2)}, ALT: {event.altitude.toFixed(2)}
-          </p>
-        ))}
-      </div>
-    </div>
+    <aside className="hud-panel hud-panel--right" aria-label="Controls">
+      <div className="hud-panel__scroll">{body}</div>
+    </aside>
   );
 }
 

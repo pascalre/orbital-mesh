@@ -53,6 +53,11 @@ export function Satellite({ data, onPointerOver, onPointerOut, ...props }: Satel
         emissiveIntensity={hovered ? 5 : 2}
         toneMapped={false}
       />
+      {/* Invisible, larger hit target: a 0.03 sphere is far too small to hover or tap reliably. */}
+      <mesh>
+        <sphereGeometry args={[0.075, 8, 8]} />
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+      </mesh>
     </mesh>
   );
 }

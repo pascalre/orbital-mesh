@@ -10,9 +10,11 @@ import { InfoPanel } from "./components/InfoPanel";
 import { Moon } from "./components/Moon";
 import { Atmosphere } from "./components/Atmosphere";
 import { SatelliteManager } from "./components/SatelliteManager";
-import { SatelliteTooltip } from "./components/SatelliteTooltip";
+import { SatelliteTooltip, type SatelliteData } from "./components/SatelliteTooltip";
 import { MobileMenu } from "./components/MobileMenu";
 import { RegionGrid } from "./components/RegionGrid";
+import { StatusBar } from "./components/StatusBar";
+import { Hint } from "./components/Hint";
 import { getSunDirection } from "./utils/astronomy";
 import { useSolace } from "./hooks/useSolace";
 import { useIsMobile } from "./hooks/useIsMobile";
@@ -36,20 +38,35 @@ function World({ children }: { children: React.ReactNode }) {
   return <group ref={worldRef}>{children}</group>;
 }
 
+const prefersReducedMotion = () =>
+  typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
 function App() {
   const [activeTopics, setActiveTopics] = useState<string[]>(["earth/sat/tracked/*/*/*/*/*"]);
   const [regionKey, setRegionKey] = useState("all");
-  const [activeHoverData, setActiveHoverData] = useState<any | null>(null);
+  // Hover shows a card that follows the cursor; a click pins it (interactive, closable).
+  const [hoverData, setHoverData] = useState<SatelliteData | null>(null);
+  const [pinnedData, setPinnedData] = useState<SatelliteData | null>(null);
+  const [autoRotate, setAutoRotate] = useState(() => !prefersReducedMotion());
   const [sunDirection] = useState(() => getSunDirection());
-  const { data, isConnected, msgRate } = useSolace(activeTopics);
+  const { data, status, error, retry, msgRate, isConnected } = useSolace(activeTopics);
   const [satelliteCount, setSatelliteCount] = useState(0);
   const isMobile = useIsMobile();
 
+  const cardData = pinnedData ?? hoverData;
+  const hasPinned = pinnedData !== null;
+
+  // Only parse live messages while a card is open.
+  const cardIdRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!data || !activeHoverData) return;
+    cardIdRef.current = cardData ? String(cardData.id) : null;
+  }, [cardData]);
+
+  useEffect(() => {
+    if (!data || cardIdRef.current === null) return;
 
     try {
-      let rawString = typeof data.getBinaryAttachment === 'function'
+      const rawString = typeof data.getBinaryAttachment === 'function'
         ? data.getBinaryAttachment()
         : data;
 
@@ -59,28 +76,42 @@ function App() {
       const payload = JSON.parse(rawString.substring(jsonStart, jsonEnd + 1));
 
       const satId = payload.id || payload.name || payload.noradId;
+      if (String(satId) !== cardIdRef.current) return;
 
-      if (satId === activeHoverData.id) {
-        setActiveHoverData((prev: any) => ({
-          ...prev,
-          ...payload,
-          x: prev.x,
-          y: prev.y
-        }));
-      }
+      const apply = (prev: SatelliteData | null): SatelliteData | null =>
+        prev && String(prev.id) === String(satId)
+          ? { ...prev, ...payload, x: prev.x, y: prev.y }
+          : prev;
+      setHoverData(apply);
+      setPinnedData(apply);
     } catch (e) {
       console.error("Tooltip Live-Update Error:", e);
     }
   }, [data]);
+
+  // A changed filter replaces the satellite set, so a pinned card would go stale.
+  useEffect(() => {
+    setPinnedData(null);
+  }, [activeTopics]);
+
+  useEffect(() => {
+    if (!hasPinned) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setPinnedData(null);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [hasPinned]);
 
   const controlPanel = (
     <ControlPanel
       satelliteCount={satelliteCount}
       onFilterChange={setActiveTopics}
       onRegionChange={setRegionKey}
-      msgRate={msgRate}
-      isConnected={isConnected}
+      status={status}
       solaceData={data}
+      autoRotate={autoRotate}
+      onAutoRotateChange={setAutoRotate}
       mobile={isMobile}
     />
   );
@@ -90,15 +121,27 @@ function App() {
     <div style={{ width: '100vw', height: '100dvh', position: 'relative', overflow: 'hidden' }}>
       {!isMobile && (
         <>
-          {controlPanel}
           {infoPanel}
+          {controlPanel}
         </>
       )}
+
+      <StatusBar
+        status={status}
+        error={error}
+        msgRate={msgRate}
+        satelliteCount={satelliteCount}
+        onRetry={retry}
+      />
+
       <Canvas
+        role="img"
+        aria-label="Interactive 3D globe showing live satellite positions"
         camera={{ position: [0, 0.1, 5] }}
         gl={{
           toneMapping: THREE.NoToneMapping
         }}
+        onPointerMissed={() => setPinnedData(null)}
         style={{
           position: 'absolute',
           top: 0,
@@ -118,7 +161,8 @@ function App() {
             filterTopics={activeTopics}
             solaceData={data}
             isConnected={isConnected}
-            onHoverSatellite={setActiveHoverData}
+            onHoverSatellite={setHoverData}
+            onSelectSatellite={setPinnedData}
             onCountChange={setSatelliteCount}
             isMobile={isMobile}
           />
@@ -136,23 +180,29 @@ function App() {
         <OrbitControls
           enableDamping={true}
           dampingFactor={0.05}
-          autoRotate={!activeHoverData}
+          autoRotate={autoRotate && !cardData}
           autoRotateSpeed={0.08}
           minDistance={2.6}
           maxDistance={25}
         />
       </Canvas>
 
-      {activeHoverData && (
+      {cardData && (
         <SatelliteTooltip
-          data={activeHoverData}
-          visible={!!activeHoverData}
-          x={activeHoverData?.x}
-          y={activeHoverData?.y}
+          data={cardData}
+          visible
+          x={cardData.x}
+          y={cardData.y}
           mobile={isMobile}
-          onClose={() => setActiveHoverData(null)}
+          pinned={hasPinned}
+          onClose={() => {
+            setPinnedData(null);
+            setHoverData(null);
+          }}
         />
       )}
+
+      <Hint mobile={isMobile} />
 
       {isMobile && <MobileMenu info={infoPanel} controls={controlPanel} />}
     </div>
