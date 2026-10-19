@@ -1,6 +1,9 @@
 services:
   orbital-emitter:
     image: ghcr.io/pascalre/orbital-mesh/orbital-emitter:latest
+    limits:
+      cpus: 1
+      memory: 512M
     restart: unless-stopped
     env_file: .env
     environment:
