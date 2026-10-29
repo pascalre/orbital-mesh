@@ -1,0 +1,42 @@
+name: Dependabot Auto-Merge
+
+on:
+  pull_request:
+    branches: [ "master" ]
+    types: [ opened, synchronize, reopened ]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-merge:
+    name: Auto-merge Dependabot PR
+    runs-on: ubuntu-latest
+    if: github.actor == 'dependabot[bot]'
+
+    steps:
+      - name: Wait for checks to pass
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          for i in $(seq 1 60); do
+            RESULT=$(gh pr checks "$PR_URL" 2>/dev/null || echo "pending")
+            echo "$RESULT"
+            if ! echo "$RESULT" | grep -qE '^(pending|in progress)'; then
+              if echo "$RESULT" | grep -q 'fail'; then
+                echo "Checks failed - not merging."
+                exit 1
+              fi
+              echo "All checks passed."
+              break
+            fi
+            sleep 30
+          done
+
+      - name: Merge pull request
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: gh pr merge "$PR_URL" --squash --delete-branch
