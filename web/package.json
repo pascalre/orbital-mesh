@@ -15,7 +15,7 @@
     "react": "^19.2.4",
     "react-dom": "^19.3.1",
     "solclientjs": "^10.18.3",
-    "three": "^0.185.1"
+    "three": "^0.186.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
